@@ -48,6 +48,11 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Install Dependencies
+      run: |
+        brew update
+        brew install ninja
+
     # TODO: Use sub workflows per compilers
     - name: Build DirectX Shader Compiler
       working-directory: ./src/DirectXShaderCompiler
