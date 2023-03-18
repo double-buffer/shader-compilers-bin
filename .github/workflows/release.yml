@@ -65,9 +65,9 @@ jobs:
       with:
         name: MacOS-X64
         path: |
-          ./src/DirectXShaderCompiler/bin/*
-          ./src/DirectXShaderCompiler/include/*
-          ./src/DirectXShaderCompiler/lib/*
+          ./src/DirectXShaderCompiler/build/bin/*
+          ./src/DirectXShaderCompiler/build/include/*
+          ./src/DirectXShaderCompiler/build/lib/*
 
   # build_zip:
   #   runs-on: windows-latest
