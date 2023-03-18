@@ -54,20 +54,34 @@ jobs:
         brew install ninja
 
     # TODO: Use sub workflows per compilers
-    - name: Build DirectX Shader Compiler
+    # - name: Build DirectX Shader Compiler
+    #   working-directory: ./src/DirectXShaderCompiler
+    #   run: | 
+    #     cmake -B build -G Ninja . -C ./cmake/caches/PredefinedParams.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-Werror
+    #     ninja -C build
+
+    - name: Copy Files
       working-directory: ./src/DirectXShaderCompiler
-      run: | 
-        cmake -B build -G Ninja . -C ./cmake/caches/PredefinedParams.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-Werror
-        ninja -C build
+      run: |
+        mkdir publish
+        ./build/bin/dxc ./publish/bin/
+        ./build/lib/libdxcompiler.dylib ./publish/lib/
+        ./include/WinAdapter.h ./publish/include/
+        ./include/dxcisense.h ./publish/include/
+        ./include/dxcerrors.h ./publish/include/
+        ./include/dxcapi.h ./publish/include/
 
     - name: Upload Binaries
       uses: actions/upload-artifact@v3
       with:
         name: MacOS-X64
         path: |
-          ./src/DirectXShaderCompiler/build/bin/*
-          ./src/DirectXShaderCompiler/build/include/*
-          ./src/DirectXShaderCompiler/build/lib/*
+          ./src/DirectXShaderCompiler/build/bin/dxc
+          ./src/DirectXShaderCompiler/build/lib/libdxcompiler.dylib
+          ./src/DirectXShaderCompiler/build/../include/WinAdapter.h
+          ./src/DirectXShaderCompiler/build/../include/dxcisense.h
+          ./src/DirectXShaderCompiler/build/../include/dxcerrors.h
+          ./src/DirectXShaderCompiler/build/../include/dxcapi.h
 
   # build_zip:
   #   runs-on: windows-latest
