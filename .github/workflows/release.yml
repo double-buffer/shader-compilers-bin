@@ -45,6 +45,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: recursive
 
     # TODO: Use sub workflows per compilers
     - name: Build DirectX Shader Compiler
