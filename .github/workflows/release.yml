@@ -75,13 +75,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: MacOS-X64
-        path: |
-          ./src/DirectXShaderCompiler/build/bin/dxc
-          ./src/DirectXShaderCompiler/build/lib/libdxcompiler.dylib
-          ./src/DirectXShaderCompiler/build/../include/WinAdapter.h
-          ./src/DirectXShaderCompiler/build/../include/dxcisense.h
-          ./src/DirectXShaderCompiler/build/../include/dxcerrors.h
-          ./src/DirectXShaderCompiler/build/../include/dxcapi.h
+        path: ./src/DirectXShaderCompiler/publish
 
   # build_zip:
   #   runs-on: windows-latest
