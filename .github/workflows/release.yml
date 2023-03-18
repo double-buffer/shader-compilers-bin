@@ -64,10 +64,11 @@ jobs:
       working-directory: ./src/DirectXShaderCompiler
       run: |
         mkdir publish
-        ./include/WinAdapter.h ./publish/include/
-        ./include/dxcisense.h ./publish/include/
-        ./include/dxcerrors.h ./publish/include/
-        ./include/dxcapi.h ./publish/include/
+
+        ./include/dxc/WinAdapter.h ./publish/include/dxc/
+        ./include/dxc/dxcisense.h ./publish/include/dxc/
+        ./include/dxc/dxcerrors.h ./publish/include/dxc/
+        ./include/dxc/dxcapi.h ./publish/include/dxc/
 
     - name: Upload Binaries
       uses: actions/upload-artifact@v3
