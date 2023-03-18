@@ -63,16 +63,11 @@ jobs:
     - name: Copy Files
       working-directory: ./src/DirectXShaderCompiler
       run: |
-        mkdir ./publish/
-        mkdir ./publish/bin/
-        mkdir ./publish/lib/
-        mkdir ./publish/include/
-        mkdir ./publish/include/dxc/
 
-        ./include/dxc/WinAdapter.h ./publish/include/dxc/
-        ./include/dxc/dxcisense.h ./publish/include/dxc/
-        ./include/dxc/dxcerrors.h ./publish/include/dxc/
-        ./include/dxc/dxcapi.h ./publish/include/dxc/
+        cp ./include/dxc/WinAdapter.h ./publish/include/dxc/
+        cp ./include/dxc/dxcisense.h ./publish/include/dxc/
+        cp ./include/dxc/dxcerrors.h ./publish/include/dxc/
+        cp ./include/dxc/dxcapi.h ./publish/include/dxc/
 
     - name: Upload Binaries
       uses: actions/upload-artifact@v3
