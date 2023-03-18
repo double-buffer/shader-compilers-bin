@@ -64,8 +64,6 @@ jobs:
       working-directory: ./src/DirectXShaderCompiler
       run: |
         mkdir publish
-        ./build/bin/dxc ./publish/bin/
-        ./build/lib/libdxcompiler.dylib ./publish/lib/
         ./include/WinAdapter.h ./publish/include/
         ./include/dxcisense.h ./publish/include/
         ./include/dxcerrors.h ./publish/include/
