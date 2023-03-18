@@ -55,13 +55,12 @@ jobs:
 
     - name: Upload Binaries
       uses: actions/upload-artifact@v3
-      working-directory: ./src/DirectXShaderCompiler
       with:
         name: MacOS-X64
         path: |
-          ./bin/*
-          ./include/*
-          ./lib/*
+          ./src/DirectXShaderCompiler/bin/*
+          ./src/DirectXShaderCompiler/include/*
+          ./src/DirectXShaderCompiler/lib/*
 
   # build_zip:
   #   runs-on: windows-latest
