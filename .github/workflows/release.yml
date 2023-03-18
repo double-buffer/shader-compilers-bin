@@ -63,6 +63,11 @@ jobs:
     - name: Copy Files
       working-directory: ./src/DirectXShaderCompiler
       run: |
+        mkdir ./publish/
+        mkdir ./publish/bin/
+        mkdir ./publish/lib/
+        mkdir ./publish/include/
+        mkdir ./publish/include/dxc/
 
         cp ./include/dxc/WinAdapter.h ./publish/include/dxc/
         cp ./include/dxc/dxcisense.h ./publish/include/dxc/
