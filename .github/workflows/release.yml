@@ -15,25 +15,25 @@ on:
   #       type: boolean
 
 jobs:
-  build-dxc:
-    strategy:
-      matrix:
-        platform: [macos]
-        architecture: [x64, arm64]
-    uses: ./.github/workflows/build-dxc.yml
-    name: 'build-dxc-${{ matrix.platform }}-${{ matrix.architecture }}'
-    with:
-      platform: ${{ matrix.platform }}
-      architecture: ${{ matrix.architecture }}
+  # build-dxc:
+  #   strategy:
+  #     matrix:
+  #       platform: [macos]
+  #       architecture: [x64, arm64]
+  #   uses: ./.github/workflows/build-dxc.yml
+  #   name: 'build-dxc-${{ matrix.platform }}-${{ matrix.architecture }}'
+  #   with:
+  #     platform: ${{ matrix.platform }}
+  #     architecture: ${{ matrix.architecture }}
 
   create-release:
     runs-on: ubuntu-latest
 
     steps:
-    - name: "Set current date as env variable"
+    - name: Get Current Date
       run: echo "BUILD_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
       
-    - name: release
+    - name: Create Release
       uses: actions/create-release@v1
       id: create_release
       with:
