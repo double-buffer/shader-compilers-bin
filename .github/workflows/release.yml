@@ -29,7 +29,7 @@ jobs:
   build-spirv-cross:
     strategy:
       matrix:
-        platform: [macos]
+        platform: [macos, windows, ubuntu]
         architecture: [x64]
     uses: ./.github/workflows/build-spirv-cross.yml
     name: 'build-spirv-cross-${{ matrix.platform }}-${{ matrix.architecture }}'
