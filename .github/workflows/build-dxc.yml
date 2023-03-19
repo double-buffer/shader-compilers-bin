@@ -55,7 +55,9 @@ jobs:
         cp ./LICENSE.TXT ./publish/
 
     - name: Zip Binaries
-      run: zip ./publish/${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG }}_${{ inputs.architecture }}.zip ./src/DirectXShaderCompiler/publish/* -r
+      run: |
+        mkdir ./publish/
+        zip ./publish/${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG }}_${{ inputs.architecture }}.zip ./src/DirectXShaderCompiler/publish/* -r
 
     - name: Upload Binaries
       uses: actions/upload-artifact@v3
