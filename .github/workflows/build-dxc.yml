@@ -21,7 +21,7 @@ jobs:
 
     - name: Get Tag name
       working-directory: ./src/DirectXShaderCompiler
-      run: echo "CURRENT_TAG=$(git describe --abbrev=0)" >> $GITHUB_ENV
+      run: echo "CURRENT_TAG=$(git describe --tags)" >> $GITHUB_ENV
 
     - name: Install Dependencies MacOS
       if: inputs.platform == 'macos'
