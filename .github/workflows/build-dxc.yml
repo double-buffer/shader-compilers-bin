@@ -25,7 +25,7 @@ jobs:
       run: echo "CURRENT_TAG=$(git describe --tags)" >> $GITHUB_ENV
 
     - name: Get Tag name for artifact name
-      run: echo "CURRENT_TAG_ARTIFACT=${{ env.CURRENT_TAG.replace('.', '_') }}" >> $GITHUB_ENV
+      run: echo "CURRENT_TAG_ARTIFACT=$(echo "${{ env.CURRENT_TAG }}" | sed 's/\./_/g')" >> $GITHUB_ENV
 
     - name: Install Dependencies MacOS
       if: inputs.platform == 'macos'
