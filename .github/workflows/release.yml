@@ -15,31 +15,6 @@ on:
   #       type: boolean
 
 jobs:
-  # build_windows_x64:
-  #   runs-on: windows-latest
-
-  #   steps:
-  #   - uses: actions/checkout@v3
-
-  #   - name: Configure MSBuild
-  #     uses: microsoft/setup-msbuild@v1.1
-  #     with:
-  #       vs-version: '[17.0, 17.5)'
-  #       msbuild-architecture: x64
-
-  #   - name: Build Windows Platform
-  #     working-directory: ./src/Platforms/Windows
-  #     run: ./Build.ps1 -outputDirectory ./bin/ -configuration Release
-
-  #   - name: Upload Binaries
-  #     uses: actions/upload-artifact@v3
-  #     with:
-  #       name: WindowsNativex64
-  #       path: |
-  #           ./src/Platforms/Windows/bin/Elemental.Native.dll
-  #           ./src/Platforms/Windows/bin/D3D12/D3D12Core.dll
-  #           ./src/Platforms/Windows/bin/D3D12/D3D12SDKLayers.dll
-
   build-dxc:
     strategy:
       matrix:
@@ -51,99 +26,24 @@ jobs:
       platform: ${{ matrix.platform }}
       architecture: ${{ matrix.architecture }}
 
-  # build_macos_x64:
-  #   runs-on: macos-latest
+  create-release:
+    runs-on: ubuntu-latest
 
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #     with:
-  #       submodules: recursive
-
-  #   - name: Install Dependencies
-  #     run: |
-  #       brew update
-  #       brew install ninja
-
-  #   # TODO: Use sub workflows per compilers
-  #   - name: Build DirectX Shader Compiler
-  #     working-directory: ./src/DirectXShaderCompiler
-  #     run: | 
-  #       cmake -B build -G Ninja . -C ./cmake/caches/PredefinedParams.cmake -DSC_ARCH_NAME=x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-Werror
-  #       ninja -C build
-
-  #   - name: Copy Files
-  #     working-directory: ./src/DirectXShaderCompiler
-  #     run: |
-  #       mkdir ./publish/
-  #       mkdir ./publish/bin/
-  #       mkdir ./publish/lib/
-  #       mkdir ./publish/include/
-  #       mkdir ./publish/include/dxc/
-  #       cp ./build/bin/dxc ./publish/bin/
-  #       cp ./build/lib/libdxcompiler.dylib ./publish/lib/
-  #       cp ./include/dxc/WinAdapter.h ./publish/include/dxc/
-  #       cp ./include/dxc/dxcisense.h ./publish/include/dxc/
-  #       cp ./include/dxc/dxcerrors.h ./publish/include/dxc/
-  #       cp ./include/dxc/dxcapi.h ./publish/include/dxc/
-
-  #   - name: Upload Binaries
-  #     uses: actions/upload-artifact@v3
-  #     with:
-  #       name: macosx_dxc_x64
-  #       path: ./src/DirectXShaderCompiler/publish
-
-  # build_zip:
-  #   runs-on: windows-latest
-  #   needs: [build_windows_x64, build_macos_x64, build_dotnet]
-
-  #   steps:
-  #   - uses: actions/checkout@v3
-
-  #   - name: Setup .NET SDK
-  #     uses: actions/setup-dotnet@v3
-  #     with:
-  #       dotnet-version: 7.0.100
-
-  #   - name: Download Windows Native x64
-  #     uses: actions/download-artifact@master
-  #     with:
-  #       name: WindowsNativex64
-  #       path: ./publish/runtimes/win-x64
-          
-  #   - name: Download MacOS Native
-  #     uses: actions/download-artifact@master
-  #     with:
-  #       name: MacOSNative
-  #       path: ./publish/runtimes/osx
-          
-  #   - name: Download Dotnet Binaries
-  #     uses: actions/download-artifact@master
-  #     with:
-  #       name: DotnetBinaries
-  #       path: ./publish/lib/net7.0
-
-  #   - name: Replace tokens in nuspec file
-  #     uses: datamonsters/replace-action@master
-  #     with:
-  #       files: "./publish/Elemental.nuspec"
-  #       replacements: '#VERSION#=${{ inputs.tag }},#COMMIT#=e1c65e4524cd70ee6e22abe33e6cb6ec73938cb3'
-
-  #   - name: Nuget pack
-  #     working-directory: ./publish
-  #     run: nuget.exe pack -OutputDirectory build
-
-  #   # TODO: Create tag
-  #   # TODO: Create Release
-
-  #   - name: Push Nuget Package
-  #     if: ${{ inputs.publish-nuget == true }}
-  #     run: dotnet nuget push ./publish/build/Elemental.${{ inputs.tag }}.nupkg --source 'https://api.nuget.org/v3/index.json' --api-key ${{ secrets.NUGET_APIKEY }}
-          
-  #   - name: Upload Nuget package
-  #     uses: actions/upload-artifact@v3
-  #     with:
-  #       name: nuget
-  #       path: ./publish/build/*.nupkg
+    steps:
+    - name: "Set current date as env variable"
+      run: echo "BUILD_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      
+    - name: release
+      uses: actions/create-release@v1
+      id: create_release
+      with:
+        draft: true
+        prerelease: false
+        release_name: Release ${{ env.BUILD_DATE }}
+        tag_name: ${{ env.BUILD_DATE }}
+        # body_path: CHANGELOG.md
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
 
   #   - name: Delete Windows Native x64
   #     uses: geekyeggo/delete-artifact@v2

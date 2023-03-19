@@ -37,6 +37,8 @@ jobs:
     #     cmake -B build -G Ninja . -C ./cmake/caches/PredefinedParams.cmake -DSC_ARCH_NAME=${{ inputs.architecture }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-Werror
     #     ninja -C build
 
+  #       cp ./build/bin/dxc ./publish/bin/
+  #       cp ./build/lib/libdxcompiler.dylib ./publish/lib/
     - name: Copy Files
       working-directory: ./src/DirectXShaderCompiler
       run: |
