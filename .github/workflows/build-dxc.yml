@@ -62,4 +62,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: ${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG }}_${{ inputs.architecture }}
-        path: ./publish/*.zip
+        path: ./src/DirectXShaderCompiler/publish/*.zip
