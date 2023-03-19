@@ -41,11 +41,15 @@ jobs:
   #           ./src/Platforms/Windows/bin/D3D12/D3D12SDKLayers.dll
 
   build-dxc:
+    strategy:
+      matrix:
+        platform: [macos]
+        architecture: [x64, arm64]
     uses: ./.github/workflows/build-dxc.yml
-    name: 'build-dxc-macos-x64'
+    name: 'build-dxc-${{ matrix.platform }}-${{ matrix.architecture }}'
     with:
-      platform: 'macos'
-      architecture: 'x64'
+      platform: ${{ matrix.platform }}
+      architecture: ${{ matrix.architecture }}
 
   # build_macos_x64:
   #   runs-on: macos-latest
