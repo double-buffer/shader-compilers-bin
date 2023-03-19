@@ -51,8 +51,7 @@ jobs:
         mkdir ./publish/lib/
         mkdir ./publish/include/
         mkdir ./publish/include/dxc/
-        cp ./build/bin/dxc ./publish/bin/
-        cp ./build/lib/libdxcompiler.dylib ./publish/lib/
+
         cp ./include/dxc/WinAdapter.h ./publish/include/dxc/
         cp ./include/dxc/dxcisense.h ./publish/include/dxc/
         cp ./include/dxc/dxcerrors.h ./publish/include/dxc/

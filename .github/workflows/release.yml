@@ -42,6 +42,7 @@ jobs:
 
   build-dxc:
     uses: ./.github/workflows/build-dxc.yml
+    name: 'build-dxc-macos-x64'
     with:
       platform: 'macos'
       architecture: 'x64'
