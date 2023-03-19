@@ -40,7 +40,7 @@ jobs:
         draft: true
         prerelease: false
         release_name: Release ${{ env.BUILD_DATE }}
-        tag_name: ${{ env.BUILD_DATE }}
+        tag_name: v${{ env.BUILD_DATE }}
         # body_path: CHANGELOG.md
       env:
         GITHUB_TOKEN: ${{ github.token }}
