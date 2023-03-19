@@ -1,0 +1,75 @@
+name: Build-SPIRV-Cross
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        required: true
+        type: string
+      architecture:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ${{ inputs.platform == 'linux' && 'ubuntu' || inputs.platform }}-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: Get Tag name
+      shell: bash
+      working-directory: ./src/SPIRV-Cross
+      run: echo "CURRENT_TAG=$(git describe --tags)" >> $GITHUB_ENV
+
+    - name: Get Tag name for artifact name
+      shell: bash
+      run: echo "CURRENT_TAG_ARTIFACT=$(echo "${{ env.CURRENT_TAG }}" | sed 's/\./_/g')" >> $GITHUB_ENV
+
+    - name: Configure SPIRV-Cross
+      shell: bash
+      working-directory: ./src/SPIRV-Cross
+      run: | 
+        mkdir build
+        cd build
+        cmake .. -DSPIRV_CROSS_WERROR=ON -DSPIRV_CROSS_MISC_WARNINGS=ON -DSPIRV_CROSS_SHARED=ON -DCMAKE_INSTALL_PREFIX=output -DCMAKE_BUILD_TYPE=Release -DSPIRV_CROSS_ENABLE_TESTS=ON
+
+    - name: Build SPIRV-Cross
+      shell: bash
+      working-directory: ./src/SPIRV-Cross/build
+      run: |
+        cmake --build . --config Release
+        cmake --build . --config Release --target install
+
+    - name: Copy Files
+      shell: bash
+      working-directory: ./src/SPIRV-Cross
+      run: |
+        mkdir ./publish/
+        mkdir ./publish/bin/
+        mkdir ./publish/lib/
+        mkdir ./publish/include/
+        cp -R ./build/output/bin/ ./publish/bin/
+        cp -R ./build/output/lib/ ./publish/lib/
+        cp -R ./include/ ./publish/include/
+        cp -R ./LICENSE ./publish/
+
+    - name: Zip Binaries
+      if: inputs.platform != 'windows'
+      shell: bash
+      working-directory: ./src/SPIRV-Cross/publish
+      run: zip ./${{ inputs.platform }}_spirv-cross_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}.zip ./* -r
+
+    - name: Zip Binaries
+      if: inputs.platform == 'windows'
+      working-directory: ./src/SPIRV-Cross/publish
+      run: Compress-Archive -Path ./* -Destination ./${{ inputs.platform }}_spirv-cross_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}.zip
+
+    - name: Upload Binaries
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ inputs.platform }}_spirv-cross_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}
+        path: ./src/SPIRV-Cross/publish/*.zip

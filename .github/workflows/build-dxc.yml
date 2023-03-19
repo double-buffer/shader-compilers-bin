@@ -1,0 +1,77 @@
+name: Build-DXC
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        required: true
+        type: string
+      architecture:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ${{ inputs.platform == 'linux' && 'ubuntu' || inputs.platform }}-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: Get Tag name
+      shell: bash
+      working-directory: ./src/DirectXShaderCompiler
+      run: echo "CURRENT_TAG=$(git describe --tags)" >> $GITHUB_ENV
+
+    - name: Get Tag name for artifact name
+      shell: bash
+      run: echo "CURRENT_TAG_ARTIFACT=$(echo "${{ env.CURRENT_TAG }}" | sed 's/\./_/g')" >> $GITHUB_ENV
+
+    - name: Install Dependencies MacOS
+      if: inputs.platform == 'macos'
+      run: |
+        brew update
+        brew install ninja
+
+    - name: Build DirectX Shader Compiler
+      shell: bash
+      working-directory: ./src/DirectXShaderCompiler
+      run: | 
+        cmake -B build -G Ninja . -C ./cmake/caches/PredefinedParams.cmake -DCMAKE_C_COMPILER_ARCHITECTURE_ID=${{ inputs.architecture }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-Werror
+        ninja -C build
+
+    - name: Copy Files
+      shell: bash
+      working-directory: ./src/DirectXShaderCompiler
+      run: |
+        mkdir ./publish/
+        mkdir ./publish/bin/
+        mkdir ./publish/lib/
+        mkdir ./publish/include/
+        mkdir ./publish/include/dxc/
+        cp ./build/bin/dxc ./publish/bin/
+        cp ./build/lib/libdxcompiler.dylib ./publish/lib/
+        cp ./include/dxc/WinAdapter.h ./publish/include/dxc/
+        cp ./include/dxc/dxcisense.h ./publish/include/dxc/
+        cp ./include/dxc/dxcerrors.h ./publish/include/dxc/
+        cp ./include/dxc/dxcapi.h ./publish/include/dxc/
+        cp ./LICENSE.TXT ./publish/
+
+    - name: Zip Binaries
+      if: inputs.platform != 'windows'
+      shell: bash
+      working-directory: ./src/DirectXShaderCompiler/publish
+      run: zip ./${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}.zip ./* -r
+
+    - name: Zip Binaries
+      if: inputs.platform == 'windows'
+      working-directory: ./src/DirectXShaderCompiler/publish
+      run: Compress-Archive -Path ./* -Destination ./${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}.zip
+
+    - name: Upload Binaries
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}
+        path: ./src/DirectXShaderCompiler/publish/*.zip
