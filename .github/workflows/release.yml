@@ -28,7 +28,7 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
-    needs: [build_dxc]
+    needs: [build-dxc]
 
     steps:
     - name: Get Current Date
