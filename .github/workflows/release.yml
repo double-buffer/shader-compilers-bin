@@ -2,19 +2,19 @@ name: Release
 
 on:
   push:
-    branches: [ project-setup ]
+    branches: [ main ]
 
 jobs:
-  # build-dxc:
-  #   strategy:
-  #     matrix:
-  #       platform: [macos]
-  #       architecture: [x64]
-  #   uses: ./.github/workflows/build-dxc.yml
-  #   name: 'build-dxc-${{ matrix.platform }}-${{ matrix.architecture }}'
-  #   with:
-  #     platform: ${{ matrix.platform }}
-  #     architecture: ${{ matrix.architecture }}
+  build-dxc:
+    strategy:
+      matrix:
+        platform: [macos]
+        architecture: [x64]
+    uses: ./.github/workflows/build-dxc.yml
+    name: 'build-dxc-${{ matrix.platform }}-${{ matrix.architecture }}'
+    with:
+      platform: ${{ matrix.platform }}
+      architecture: ${{ matrix.architecture }}
       
   build-spirv-cross:
     strategy:
@@ -29,7 +29,7 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
-    needs: [build-spirv-cross]
+    needs: [build-dxc, build-spirv-cross]
 
     steps:
     - name: Get Current Date

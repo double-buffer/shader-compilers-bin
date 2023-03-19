@@ -9,6 +9,6 @@ It currently provides:
 
 **Important**
 
-This compiled binaries are not officially supported.
+Those compiled binaries are not officially supported.
 
 Please note that the MacOS versions of DirectXShaderCompiler doesn't contain dxil library. It means it is not possible to compile DXIL shaders that are signed (They will not run on a prod Windows install). You can use it however to compile HLSL to SPIRV and to transcompile it to something else.
