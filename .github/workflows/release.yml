@@ -40,8 +40,8 @@ jobs:
   #           ./src/Platforms/Windows/bin/D3D12/D3D12Core.dll
   #           ./src/Platforms/Windows/bin/D3D12/D3D12SDKLayers.dll
 
-  call-workflow-passing-data:
-    uses: ./ .github/workflows/build-dxc.yml
+  build-dxc:
+    uses: ./.github/workflows/build-dxc.yml
     with:
       platform: 'macos'
       architecture: 'x64'
