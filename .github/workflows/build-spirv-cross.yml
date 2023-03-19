@@ -47,10 +47,10 @@ jobs:
         mkdir ./publish/bin/
         mkdir ./publish/lib/
         mkdir ./publish/include/
-        cp ./build/output/bin/ ./publish/bin/
-        cp ./build/output/lib/ ./publish/lib/
-        cp ./include/ ./publish/include/
-        cp ./LICENSE ./publish/
+        cp -R ./build/output/bin/ ./publish/bin/
+        cp -R ./build/output/lib/ ./publish/lib/
+        cp -R ./include/ ./publish/include/
+        cp -R ./LICENSE ./publish/
 
     - name: Zip Binaries
       working-directory: ./src/SPIRV-Cross/publish
