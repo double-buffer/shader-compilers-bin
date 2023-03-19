@@ -34,7 +34,7 @@ jobs:
     - name: Get Current Date
       run: echo "BUILD_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-    - name: Download Dxc artifacts
+    - name: Download Artifacts
       uses: actions/download-artifact@master
       with:
         path: ./release

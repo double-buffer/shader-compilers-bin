@@ -54,8 +54,11 @@ jobs:
         cp ./include/dxc/dxcapi.h ./publish/include/dxc/
         cp ./LICENSE.TXT ./publish/
 
+    - name: Zip Binaries
+      run: zip ./publish/${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG }}_${{ inputs.architecture }}.zip ./src/DirectXShaderCompiler/publish/* -r
+
     - name: Upload Binaries
       uses: actions/upload-artifact@v3
       with:
         name: ${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG }}_${{ inputs.architecture }}
-        path: ./src/DirectXShaderCompiler/publish
+        path: ./publish
