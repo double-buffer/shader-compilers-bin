@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ if eq(parameters.platform, 'linux') }}ubuntu-latest${{ else }}${{ parameters.platform }}${{ endif }}
+    runs-on: ${{  parameters.platform == 'linux' && 'ubuntu-latest' || parameters.platform }}
 
     steps:
     - uses: actions/checkout@v3
