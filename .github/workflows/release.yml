@@ -31,7 +31,7 @@ jobs:
 
     steps:
     - name: Get Current Date
-      run: echo "BUILD_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      run: echo "BUILD_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
       
     - name: Create Release
       uses: actions/create-release@v1
