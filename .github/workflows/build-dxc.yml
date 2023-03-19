@@ -33,15 +33,12 @@ jobs:
         brew update
         brew install ninja
 
-    # TODO: Use sub workflows per compilers
-    # - name: Build DirectX Shader Compiler
-    #   working-directory: ./src/DirectXShaderCompiler
-    #   run: | 
-    #     cmake -B build -G Ninja . -C ./cmake/caches/PredefinedParams.cmake -DSC_ARCH_NAME=${{ inputs.architecture }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-Werror
-    #     ninja -C build
+    - name: Build DirectX Shader Compiler
+      working-directory: ./src/DirectXShaderCompiler
+      run: | 
+        cmake -B build -G Ninja . -C ./cmake/caches/PredefinedParams.cmake -DSC_ARCH_NAME=${{ inputs.architecture }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-Werror
+        ninja -C build
 
-  #       cp ./build/bin/dxc ./publish/bin/
-  #       cp ./build/lib/libdxcompiler.dylib ./publish/lib/
     - name: Copy Files
       working-directory: ./src/DirectXShaderCompiler
       run: |
@@ -50,7 +47,8 @@ jobs:
         mkdir ./publish/lib/
         mkdir ./publish/include/
         mkdir ./publish/include/dxc/
-
+        cp ./build/bin/dxc ./publish/bin/
+        cp ./build/lib/libdxcompiler.dylib ./publish/lib/
         cp ./include/dxc/WinAdapter.h ./publish/include/dxc/
         cp ./include/dxc/dxcisense.h ./publish/include/dxc/
         cp ./include/dxc/dxcerrors.h ./publish/include/dxc/
@@ -64,5 +62,5 @@ jobs:
     - name: Upload Binaries
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG }}_${{ inputs.architecture }}
+        name: ${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}
         path: ./src/DirectXShaderCompiler/publish/*.zip
