@@ -24,6 +24,9 @@ jobs:
       working-directory: ./src/DirectXShaderCompiler
       run: echo "CURRENT_TAG=$(git describe --tags)" >> $GITHUB_ENV
 
+    - name: Get Tag name for artifact name
+        run: echo "CURRENT_TAG_ARTIFACT=${{ env.CURRENT_TAG.replace('.', '_') }}" >> $GITHUB_ENV
+
     - name: Install Dependencies MacOS
       if: inputs.platform == 'macos'
       run: |
@@ -56,7 +59,7 @@ jobs:
 
     - name: Zip Binaries
       working-directory: ./src/DirectXShaderCompiler/publish
-      run: zip ./${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG }}_${{ inputs.architecture }}.zip ./* -r
+      run: zip ./${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}.zip ./* -r
 
     - name: Upload Binaries
       uses: actions/upload-artifact@v3
