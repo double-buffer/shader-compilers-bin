@@ -46,18 +46,3 @@ jobs:
         tag_name: v${{ env.BUILD_DATE }}
         draft: true
         files: ./release/**/*.zip
-  
-  #   - name: Delete Windows Native x64
-  #     uses: geekyeggo/delete-artifact@v2
-  #     with:
-  #         name: WindowsNativex64
-
-  #   - name: Delete MacOS Native
-  #     uses: geekyeggo/delete-artifact@v2
-  #     with:
-  #         name: MacOSNative
-          
-  #   - name: Delete Dotnet Binaries
-  #     uses: geekyeggo/delete-artifact@v2
-  #     with:
-  #         name: DotnetBinaries
