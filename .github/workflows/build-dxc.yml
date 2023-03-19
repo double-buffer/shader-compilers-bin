@@ -21,7 +21,7 @@ jobs:
 
     - name: Get Tag name
       working-directory: ./src/DirectXShaderCompiler
-      run: git describe --abbrev=0 >> $currentTagName
+      run: echo "CURRENT_TAG=$(git describe --abbrev=0)" >> $GITHUB_ENV
 
     - name: Install Dependencies MacOS
       if: inputs.platform == 'macos'
@@ -54,5 +54,5 @@ jobs:
     - name: Upload Binaries
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ inputs.platform }}_dxc_${{ currentTagName }}_${{ inputs.architecture }}
+        name: ${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG }}_${{ inputs.architecture }}
         path: ./src/DirectXShaderCompiler/publish
