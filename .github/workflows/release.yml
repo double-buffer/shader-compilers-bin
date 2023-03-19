@@ -3,16 +3,6 @@ name: Release
 on:
   push:
     branches: [ project-setup ]
-  # workflow_dispatch:
-  #   inputs:
-  #     tag:
-  #       description: "tag: git tag you want create. (sample 1.0.0)"
-  #       required: true
-  #     publish-nuget:
-  #       description: "publish-nuget: true = publish nuget package. false = create the nuget puackage but don't publish it."
-  #       required: true
-  #       default: false
-  #       type: boolean
 
 jobs:
   # build-dxc:
