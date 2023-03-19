@@ -58,9 +58,15 @@ jobs:
         cp -R ./LICENSE ./publish/
 
     - name: Zip Binaries
+      if: inputs.platform != 'windows'
       shell: bash
       working-directory: ./src/SPIRV-Cross/publish
       run: zip ./${{ inputs.platform }}_spirv-cross_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}.zip ./* -r
+
+    - name: Zip Binaries
+      if: inputs.platform == 'windows'
+      working-directory: ./src/SPIRV-Cross/publish
+      run: Compress-Archive -Path ./* -Destination ./${{ inputs.platform }}_spirv-cross_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}.zip
 
     - name: Upload Binaries
       uses: actions/upload-artifact@v3
