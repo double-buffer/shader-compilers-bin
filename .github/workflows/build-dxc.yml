@@ -19,6 +19,10 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Get Tag name
+      working-directory: ./src/DirectXShaderCompiler
+      run: git describe --abbrev=0 >> $currentTagName
+
     - name: Install Dependencies MacOS
       if: inputs.platform == 'macos'
       run: |
@@ -29,7 +33,7 @@ jobs:
     # - name: Build DirectX Shader Compiler
     #   working-directory: ./src/DirectXShaderCompiler
     #   run: | 
-    #     cmake -B build -G Ninja . -C ./cmake/caches/PredefinedParams.cmake -DSC_ARCH_NAME=x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-Werror
+    #     cmake -B build -G Ninja . -C ./cmake/caches/PredefinedParams.cmake -DSC_ARCH_NAME=${{ inputs.architecture }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS=-Werror
     #     ninja -C build
 
     - name: Copy Files
@@ -45,9 +49,10 @@ jobs:
         cp ./include/dxc/dxcisense.h ./publish/include/dxc/
         cp ./include/dxc/dxcerrors.h ./publish/include/dxc/
         cp ./include/dxc/dxcapi.h ./publish/include/dxc/
+        cp ./LICENSE.TXT ./publish/
 
     - name: Upload Binaries
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ inputs.platform }}_dxc_${{ inputs.architecture }}
+        name: ${{ inputs.platform }}_dxc_${{ currentTagName }}_${{ inputs.architecture }}
         path: ./src/DirectXShaderCompiler/publish
