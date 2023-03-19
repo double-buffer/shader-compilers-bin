@@ -45,7 +45,7 @@ jobs:
         name: Release ${{ env.BUILD_DATE }}
         tag_name: v${{ env.BUILD_DATE }}
         draft: true
-        files: ./release/*
+        files: ./release/*.zip
   
   #   - name: Delete Windows Native x64
   #     uses: geekyeggo/delete-artifact@v2
