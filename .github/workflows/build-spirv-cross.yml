@@ -54,7 +54,8 @@ jobs:
         mkdir ./publish/include/
         cp -R ./build/output/bin/ ./publish/bin/
         cp -R ./build/output/lib/ ./publish/lib/
-        cp -R ./include/ ./publish/include/
+        cp -R ./include/*.h ./publish/include/
+        cp -R ./include/*.hpp ./publish/include/
         cp -R ./LICENSE ./publish/
 
     - name: Zip Binaries
