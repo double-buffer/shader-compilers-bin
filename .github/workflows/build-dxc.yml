@@ -13,8 +13,8 @@ on:
 jobs:
   build:
     runs-on: ${{ 
-      (inputs.platform == 'macos' && inputs.architecture == 'arm64' && 'macos-13-xl') ||
       (inputs.platform == 'macos' && 'macos-13') ||
+      (inputs.platform == 'macos' && inputs.architecture == 'arm64' && 'macos-13-xlarge') ||
       (inputs.platform == 'linux' && 'ubuntu-latest') ||
       (inputs.platform == 'windows' && 'windows-latest')
       }}
