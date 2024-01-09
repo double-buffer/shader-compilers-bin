@@ -8,7 +8,7 @@ jobs:
   build-dxc:
     strategy:
       matrix:
-        include: ${{ fromJSON(vars.DXC_PLATFORMS }}
+        include: ${{ fromJSON(vars.DXC_PLATFORMS) }}
     uses: ./.github/workflows/build-dxc.yml
     name: 'build-dxc-${{ matrix.platform }}-${{ matrix.architecture }}'
     with:
@@ -18,7 +18,7 @@ jobs:
   build-spirv-cross:
     strategy:
       matrix:
-        include: ${{ fromJSON(vars.SPIRV_CROSS_PLATFORMS }}
+        include: ${{ fromJSON(vars.SPIRV_CROSS_PLATFORMS- }}
     uses: ./.github/workflows/build-spirv-cross.yml
     name: 'build-spirv-cross-${{ matrix.platform }}-${{ matrix.architecture }}'
     with:
