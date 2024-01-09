@@ -16,7 +16,7 @@ jobs:
       (inputs.platform == 'macos' && inputs.architecture == 'arm64' && 'macos-13-xl') ||
       (inputs.platform == 'macos' && 'macos-13') ||
       (inputs.platform == 'linux' && 'ubuntu-latest') ||
-      ('${{ inputs.platform }}-latest')
+      (inputs.platform + '-latest')
       }}
 
     steps:

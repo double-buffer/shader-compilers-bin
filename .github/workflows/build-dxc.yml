@@ -12,7 +12,12 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ inputs.platform == 'linux' && 'ubuntu' || inputs.platform }}-latest
+    runs-on: ${{ 
+      (inputs.platform == 'macos' && inputs.architecture == 'arm64' && 'macos-13-xl') ||
+      (inputs.platform == 'macos' && 'macos-13') ||
+      (inputs.platform == 'linux' && 'ubuntu-latest') ||
+      (inputs.platform + '-latest')
+      }}
 
     steps:
     - uses: actions/checkout@v3
