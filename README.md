@@ -4,8 +4,8 @@ This repository contains Releases for the latest stables binaries of different s
 
 It currently provides:
 
-- DirectXShaderCompiler (MacOS x64)
-- SPIRV-Cross (Windows x64, Linux x64, MacOS x64)
+- DirectXShaderCompiler (MacOS x64, MacOS arm64)
+- SPIRV-Cross (Windows x64, Linux x64, MacOS x64, MacOS arm64)
 
 **Important**
 
