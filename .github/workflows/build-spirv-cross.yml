@@ -12,7 +12,12 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ inputs.platform == 'linux' && 'ubuntu' || inputs.platform }}-latest
+    runs-on: ${{ 
+      (inputs.platform == 'macos' && inputs.architecture == 'arm64' && 'macos-13-arm64') ||
+      (inputs.platform == 'macos' && 'macos-13') ||
+      (inputs.platform == 'linux' && 'ubuntu-latest') ||
+      ('${{ inputs.platform }}-latest')
+      }}
 
     steps:
     - uses: actions/checkout@v3
@@ -70,7 +75,7 @@ jobs:
       run: Compress-Archive -Path ./* -Destination ./${{ inputs.platform }}_spirv-cross_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}.zip
 
     - name: Upload Binaries
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@master
       with:
         name: ${{ inputs.platform }}_spirv-cross_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}
         path: ./src/SPIRV-Cross/publish/*.zip

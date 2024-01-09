@@ -71,7 +71,7 @@ jobs:
       run: Compress-Archive -Path ./* -Destination ./${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}.zip
 
     - name: Upload Binaries
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@master
       with:
         name: ${{ inputs.platform }}_dxc_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}
         path: ./src/DirectXShaderCompiler/publish/*.zip
