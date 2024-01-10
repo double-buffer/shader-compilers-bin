@@ -40,6 +40,12 @@ jobs:
         brew update
         brew install ninja
 
+    - name: System Info
+      if: inputs.platform == 'macos'
+      run: |
+        sysctl -n machdep.cpu.brand_string
+        clang --version
+
     - name: Build DirectX Shader Compiler
       shell: bash
       working-directory: ./src/DirectXShaderCompiler
