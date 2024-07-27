@@ -34,7 +34,6 @@ jobs:
       run: echo "CURRENT_TAG_ARTIFACT=$(echo "${{ env.CURRENT_TAG }}" | sed 's/\./_/g')" >> $GITHUB_ENV
 
     - name: Setup Ninja
-      if: inputs.platform != 'windows'
       uses: seanmiddleditch/gha-setup-ninja@master
 
     - name: Setup Dependencies (Windows)
@@ -56,7 +55,7 @@ jobs:
       shell: bash
       working-directory: ./src/DirectXShaderCompiler
       run: | 
-        cmake -B build . -C ./cmake/caches/PredefinedParams.cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_SPIRV_CODEGEN=ON -DHLSL_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_DOCS=OFF -DSPIRV_BUILD_TESTS=OFF 
+        cmake -B build -G "Visual Studio 17 2022" . -C ./cmake/caches/PredefinedParams.cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_SPIRV_CODEGEN=ON -DHLSL_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_DOCS=OFF -DSPIRV_BUILD_TESTS=OFF 
         ninja -C build
 
     - name: Copy Files
