@@ -88,6 +88,14 @@ jobs:
       run: |
         mkdir ./publish/lib/
         cp ./build/lib/libdxcompiler.so ./publish/lib/
+    
+    - name: Copy Lib Files (Windows)
+      if: inputs.platform == 'windows'
+      shell: bash
+      working-directory: ./src/DirectXShaderCompiler
+      run: |
+        mkdir ./publish/lib/
+        cp ./build/bin/dxcompiler.dll ./publish/lib/
 
     - name: Zip Binaries
       if: inputs.platform != 'windows'
