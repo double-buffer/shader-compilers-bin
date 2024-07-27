@@ -55,7 +55,7 @@ jobs:
       shell: bash
       working-directory: ./src/DirectXShaderCompiler
       run: | 
-        cmake -B build -G "Visual Studio 17 2022" . -C ./cmake/caches/PredefinedParams.cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_SPIRV_CODEGEN=ON -DHLSL_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_DOCS=OFF -DSPIRV_BUILD_TESTS=OFF 
+        cmake -B build -G Ninja . -C ./cmake/caches/PredefinedParams.cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_SPIRV_CODEGEN=ON -DHLSL_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_DOCS=OFF -DSPIRV_BUILD_TESTS=OFF 
         ninja -C build
 
     - name: Copy Files
