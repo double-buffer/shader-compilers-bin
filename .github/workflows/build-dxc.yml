@@ -34,13 +34,29 @@ jobs:
       run: echo "CURRENT_TAG_ARTIFACT=$(echo "${{ env.CURRENT_TAG }}" | sed 's/\./_/g')" >> $GITHUB_ENV
 
     - name: Setup Ninja
+      if: inputs.platform != 'windows'
       uses: seanmiddleditch/gha-setup-ninja@master
 
+    - name: Setup Dependencies (Windows)
+      if: inputs.platform == 'windows'
+      uses: TheMrMilchmann/setup-msvc-dev@v3
+      with:
+        arch: ${{ inputs.architecture }}
+
     - name: Build DirectX Shader Compiler
+      if: inputs.platform != 'windows'
       shell: bash
       working-directory: ./src/DirectXShaderCompiler
       run: | 
         cmake -B build -G Ninja . -C ./cmake/caches/PredefinedParams.cmake -DCLANG_CL=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DENABLE_SPIRV_CODEGEN=ON -DHLSL_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_DOCS=OFF -DSPIRV_BUILD_TESTS=OFF 
+        ninja -C build
+    
+    - name: Build DirectX Shader Compiler (Windows)
+      if: inputs.platform == 'windows'
+      shell: bash
+      working-directory: ./src/DirectXShaderCompiler
+      run: | 
+        cmake -B build . -C ./cmake/caches/PredefinedParams.cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_SPIRV_CODEGEN=ON -DHLSL_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_DOCS=OFF -DSPIRV_BUILD_TESTS=OFF 
         ninja -C build
 
     - name: Copy Files
