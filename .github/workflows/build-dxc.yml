@@ -33,17 +33,14 @@ jobs:
       shell: bash
       run: echo "CURRENT_TAG_ARTIFACT=$(echo "${{ env.CURRENT_TAG }}" | sed 's/\./_/g')" >> $GITHUB_ENV
 
-    - name: Install Dependencies MacOS
-      if: inputs.platform == 'macos'
-      run: |
-        brew update
-        brew install ninja
+    - name: Setup Dependencies (Windows)
+      if: inputs.platform == 'win'
+      uses: TheMrMilchmann/setup-msvc-dev@v3
+      with:
+        arch: ${{ inputs.architecture }}
 
-    - name: System Info
-      if: inputs.platform == 'macos'
-      run: |
-        sysctl -n machdep.cpu.brand_string
-        clang --version
+    - name: Setup Ninja
+      uses: seanmiddleditch/gha-setup-ninja@master
 
     - name: Build DirectX Shader Compiler
       shell: bash
