@@ -64,16 +64,30 @@ jobs:
       run: |
         mkdir ./publish/
         mkdir ./publish/bin/
-        mkdir ./publish/lib/
         mkdir ./publish/include/
         mkdir ./publish/include/dxc/
         cp ./build/bin/dxc ./publish/bin/
-        cp -r ./build/lib/ ./publish/lib/
         cp ./include/dxc/WinAdapter.h ./publish/include/dxc/
         cp ./include/dxc/dxcisense.h ./publish/include/dxc/
         cp ./include/dxc/dxcerrors.h ./publish/include/dxc/
         cp ./include/dxc/dxcapi.h ./publish/include/dxc/
         cp ./LICENSE.TXT ./publish/
+
+    - name: Copy Lib Files (MacOS)
+      if: inputs.platform == 'macos'
+      shell: bash
+      working-directory: ./src/DirectXShaderCompiler
+      run: |
+        mkdir ./publish/lib/
+        cp ./build/lib/libdxcompiler.dylib ./publish/lib/
+
+    - name: Copy Lib Files (Linux)
+      if: inputs.platform == 'linux'
+      shell: bash
+      working-directory: ./src/DirectXShaderCompiler
+      run: |
+        mkdir ./publish/lib/
+        cp ./build/lib/libdxcompiler.so ./publish/lib/
 
     - name: Zip Binaries
       if: inputs.platform != 'windows'
