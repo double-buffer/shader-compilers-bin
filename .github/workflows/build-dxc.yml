@@ -80,7 +80,7 @@ jobs:
       run: |
         mkdir ./publish/lib/
         cp ./build/lib/libdxcompiler.dylib ./publish/lib/
-        cp ./build/lib/libdxil.dylib ./public/lib/
+        cp ./build/lib/libdxil.dylib ./publish/lib/
 
     - name: Copy Lib Files (Linux)
       if: inputs.platform == 'linux'
