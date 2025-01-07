@@ -80,6 +80,7 @@ jobs:
       run: |
         mkdir ./publish/lib/
         cp ./build/lib/libdxcompiler.dylib ./publish/lib/
+        cp ./build/lib/libdxil.dylib ./public/lib/
 
     - name: Copy Lib Files (Linux)
       if: inputs.platform == 'linux'
@@ -88,6 +89,7 @@ jobs:
       run: |
         mkdir ./publish/lib/
         cp ./build/lib/libdxcompiler.so ./publish/lib/
+        cp ./build/lib/libdxil.so ./publish/lib/
     
     - name: Copy Lib Files (Windows)
       if: inputs.platform == 'windows'
@@ -96,6 +98,7 @@ jobs:
       run: |
         mkdir ./publish/lib/
         cp ./build/bin/dxcompiler.dll ./publish/lib/
+        cp ./build/bin/dxil.dll ./publish/lib/
 
     - name: Zip Binaries
       if: inputs.platform != 'windows'
