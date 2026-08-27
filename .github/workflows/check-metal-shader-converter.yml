@@ -161,17 +161,16 @@ jobs:
           exit 0
         fi
 
+        BODY="$(printf '%s\n\n%s\n\n%s\n%s\n%s\n\n%s\n\n%s' \
+          "Apple's public Metal Shader Converter page now advertises **$VERSION**, but the latest shader-compilers-bin release does not contain both normalized packages for that version." \
+          "Manual step required because Apple Developer downloads require authentication:" \
+          "1. Download the macOS and Windows Metal Shader Converter $VERSION packages from Apple." \
+          "2. Upload both original Apple packages to the draft release \`metal-shader-converter-source\`." \
+          "3. Run **Import Metal Shader Converter** with version \`$VERSION\`." \
+          "The import workflow will normalize and publish the packages, delete the temporary source draft release, and close this issue." \
+          "Apple source: https://developer.apple.com/metal/shader-converter/")"
+
         gh issue create \
           --repo "$GITHUB_REPOSITORY" \
           --title "$TITLE" \
-          --body "Apple's public Metal Shader Converter page now advertises **$VERSION**, but the latest shader-compilers-bin release does not contain both normalized packages for that version.
-
-Manual step required because Apple Developer downloads require authentication:
-
-1. Download the macOS and Windows Metal Shader Converter $VERSION packages from Apple.
-2. Upload both original Apple packages to the draft release \`metal-shader-converter-source\`.
-3. Run **Import Metal Shader Converter** with version \`$VERSION\`.
-
-The import workflow will normalize and publish the packages, delete the temporary source draft release, and close this issue.
-
-Apple source: https://developer.apple.com/metal/shader-converter/"
+          --body "$BODY"
