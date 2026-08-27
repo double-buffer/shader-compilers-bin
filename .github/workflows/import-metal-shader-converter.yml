@@ -7,14 +7,6 @@ on:
         description: 'Metal Shader Converter version used in package names (for example: 4.0 beta 2)'
         required: true
         type: string
-      macos_asset:
-        description: 'Exact macOS Apple package filename uploaded to the source release'
-        required: false
-        type: string
-      windows_asset:
-        description: 'Exact Windows Apple package filename uploaded to the source release'
-        required: false
-        type: string
       target_release:
         description: 'Release tag that receives the normalized packages; empty uses the latest published release'
         required: false
@@ -30,6 +22,8 @@ jobs:
       ready: ${{ steps.prepare.outputs.ready }}
       target_release: ${{ steps.prepare.outputs.target_release }}
       version_tag: ${{ steps.prepare.outputs.version_tag }}
+      macos_asset: ${{ steps.prepare.outputs.macos_asset }}
+      windows_asset: ${{ steps.prepare.outputs.windows_asset }}
     steps:
     - name: Prepare Import
       id: prepare
@@ -37,8 +31,6 @@ jobs:
         GH_TOKEN: ${{ github.token }}
         SOURCE_TAG: metal-shader-converter-source
         VERSION: ${{ inputs.version }}
-        MACOS_ASSET: ${{ inputs.macos_asset }}
-        WINDOWS_ASSET: ${{ inputs.windows_asset }}
         REQUESTED_TARGET_RELEASE: ${{ inputs.target_release }}
       shell: bash
       run: |
@@ -58,34 +50,71 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target main \
             --title 'Metal Shader Converter source inbox' \
-            --notes 'Temporary private workflow inbox for Apple Metal Shader Converter installers. Upload the macOS and Windows downloads here, then rerun the Import Metal Shader Converter workflow.' \
+            --notes 'Temporary workflow inbox for Apple Metal Shader Converter installers. Upload the macOS and Windows downloads here, then rerun the Import Metal Shader Converter workflow with only the version.' \
             --draft
 
           echo "ready=false" >> "$GITHUB_OUTPUT"
-          echo "::notice title=Metal Shader Converter inbox created::Open the draft release '$SOURCE_TAG', upload the Apple macOS and Windows packages, then rerun this workflow with their exact filenames."
+          echo "::notice title=Metal Shader Converter inbox created::Open the draft release '$SOURCE_TAG', upload the Apple macOS and Windows packages, then rerun this workflow with the version."
           exit 0
         fi
 
-        if [[ -z "$MACOS_ASSET" || -z "$WINDOWS_ASSET" ]]; then
-          echo "::error::The source inbox already exists. Provide macos_asset and windows_asset with the exact filenames uploaded to the draft release '$SOURCE_TAG'."
-          echo "Available assets:"
-          gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' || true
+        mapfile -t ASSETS < <(gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+
+        if (( ${#ASSETS[@]} < 2 )); then
+          echo "::error::Upload both the macOS and Windows Apple packages to the draft release '$SOURCE_TAG', then rerun this workflow."
+          printf 'Available assets:\n'
+          printf '  %s\n' "${ASSETS[@]:-<none>}"
           exit 1
         fi
 
-        ASSETS="$(gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+        MACOS_ASSET=''
+        WINDOWS_ASSET=''
 
-        if ! grep -Fxq "$MACOS_ASSET" <<< "$ASSETS"; then
-          echo "::error::macOS source asset '$MACOS_ASSET' was not found in '$SOURCE_TAG'."
+        for asset in "${ASSETS[@]}"; do
+          lower="$(printf '%s' "$asset" | tr '[:upper:]' '[:lower:]')"
+
+          case "$lower" in
+            *.dmg|*.pkg)
+              [[ -z "$MACOS_ASSET" ]] && MACOS_ASSET="$asset"
+              ;;
+            *.exe|*.msi)
+              [[ -z "$WINDOWS_ASSET" ]] && WINDOWS_ASSET="$asset"
+              ;;
+          esac
+
+          if [[ -z "$MACOS_ASSET" && "$lower" =~ (macos|mac_os|mac|osx) ]]; then
+            MACOS_ASSET="$asset"
+          fi
+
+          if [[ -z "$WINDOWS_ASSET" && "$lower" =~ (windows|win64|win32|win) ]]; then
+            WINDOWS_ASSET="$asset"
+          fi
+        done
+
+        if [[ -n "$MACOS_ASSET" && -z "$WINDOWS_ASSET" ]]; then
+          for asset in "${ASSETS[@]}"; do
+            [[ "$asset" != "$MACOS_ASSET" ]] && WINDOWS_ASSET="$asset" && break
+          done
+        elif [[ -n "$WINDOWS_ASSET" && -z "$MACOS_ASSET" ]]; then
+          for asset in "${ASSETS[@]}"; do
+            [[ "$asset" != "$WINDOWS_ASSET" ]] && MACOS_ASSET="$asset" && break
+          done
+        fi
+
+        if [[ -z "$MACOS_ASSET" || -z "$WINDOWS_ASSET" || "$MACOS_ASSET" == "$WINDOWS_ASSET" ]]; then
+          echo "::error::Could not identify the macOS and Windows packages automatically. Keep only the two Apple packages in '$SOURCE_TAG' and make sure their filenames or extensions identify the platform."
+          printf 'Available assets:\n'
+          printf '  %s\n' "${ASSETS[@]}"
           exit 1
         fi
 
-        if ! grep -Fxq "$WINDOWS_ASSET" <<< "$ASSETS"; then
-          echo "::error::Windows source asset '$WINDOWS_ASSET' was not found in '$SOURCE_TAG'."
-          exit 1
-        fi
-
+        echo "macos_asset=$MACOS_ASSET" >> "$GITHUB_OUTPUT"
+        echo "windows_asset=$WINDOWS_ASSET" >> "$GITHUB_OUTPUT"
         echo "ready=true" >> "$GITHUB_OUTPUT"
+
+        echo "macOS package: $MACOS_ASSET"
+        echo "Windows package: $WINDOWS_ASSET"
+        echo "Target release: $TARGET_RELEASE"
 
   package-macos:
     needs: prepare
@@ -96,7 +125,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         SOURCE_TAG: metal-shader-converter-source
-        SOURCE_ASSET: ${{ inputs.macos_asset }}
+        SOURCE_ASSET: ${{ needs.prepare.outputs.macos_asset }}
       shell: bash
       run: |
         set -euo pipefail
@@ -108,7 +137,7 @@ jobs:
 
     - name: Extract Apple Package
       env:
-        SOURCE_ASSET: ${{ inputs.macos_asset }}
+        SOURCE_ASSET: ${{ needs.prepare.outputs.macos_asset }}
       shell: bash
       run: |
         set -euo pipefail
@@ -187,7 +216,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         SOURCE_TAG: metal-shader-converter-source
-        SOURCE_ASSET: ${{ inputs.windows_asset }}
+        SOURCE_ASSET: ${{ needs.prepare.outputs.windows_asset }}
       shell: pwsh
       run: |
         New-Item -ItemType Directory -Force source | Out-Null
@@ -198,7 +227,7 @@ jobs:
 
     - name: Extract Apple Package
       env:
-        SOURCE_ASSET: ${{ inputs.windows_asset }}
+        SOURCE_ASSET: ${{ needs.prepare.outputs.windows_asset }}
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
@@ -287,8 +316,8 @@ jobs:
         GH_TOKEN: ${{ github.token }}
         TARGET_RELEASE: ${{ needs.prepare.outputs.target_release }}
         SOURCE_TAG: metal-shader-converter-source
-        MACOS_ASSET: ${{ inputs.macos_asset }}
-        WINDOWS_ASSET: ${{ inputs.windows_asset }}
+        MACOS_ASSET: ${{ needs.prepare.outputs.macos_asset }}
+        WINDOWS_ASSET: ${{ needs.prepare.outputs.windows_asset }}
       shell: bash
       run: |
         set -euo pipefail
