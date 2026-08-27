@@ -116,14 +116,14 @@ jobs:
         SOURCE_FILE="$PWD/source/$SOURCE_ASSET"
         mkdir -p work/raw work/expanded
 
-        case "${SOURCE_FILE,,}" in
-          *.zip)
+        case "$SOURCE_FILE" in
+          *.zip|*.ZIP)
             ditto -x -k "$SOURCE_FILE" work/raw
             ;;
-          *.pkg)
+          *.pkg|*.PKG)
             pkgutil --expand-full "$SOURCE_FILE" work/expanded/source-package
             ;;
-          *.dmg)
+          *.dmg|*.DMG)
             mkdir -p work/mount
             hdiutil attach "$SOURCE_FILE" -readonly -nobrowse -mountpoint "$PWD/work/mount"
             cp -R work/mount/. work/raw/
@@ -138,7 +138,7 @@ jobs:
         while IFS= read -r -d '' package; do
           index=$((index + 1))
           pkgutil --expand-full "$package" "work/expanded/package-$index"
-        done < <(find work/raw -type f -name '*.pkg' -print0)
+        done < <(find work/raw -type f \( -name '*.pkg' -o -name '*.PKG' \) -print0)
 
     - name: Normalize macOS Package
       env:
