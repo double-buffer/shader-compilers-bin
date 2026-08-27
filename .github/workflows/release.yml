@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - '.github/**'
+      - 'README.md'
+
+permissions:
+  contents: write
 
 jobs:
   build-dxc:
@@ -39,11 +45,35 @@ jobs:
       uses: actions/download-artifact@v8
       with:
         path: ./release
+
+    - name: Carry Forward Metal Shader Converter
+      env:
+        GH_TOKEN: ${{ github.token }}
+      shell: bash
+      run: |
+        SOURCE_TAG="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq '.tag_name' 2>/dev/null || true)"
+
+        if [[ -z "$SOURCE_TAG" ]]; then
+          echo "No previous release found; skipping Metal Shader Converter carry-forward."
+          exit 0
+        fi
+
+        mkdir -p ./release/metal-shader-converter
+
+        if gh release download "$SOURCE_TAG" \
+          --repo "$GITHUB_REPOSITORY" \
+          --pattern '*_MetalShaderConverter_*' \
+          --dir ./release/metal-shader-converter; then
+          echo "Carried Metal Shader Converter packages forward from $SOURCE_TAG."
+        else
+          echo "No Metal Shader Converter packages found on $SOURCE_TAG."
+          rm -rf ./release/metal-shader-converter
+        fi
       
     - name: Create Release
       uses: softprops/action-gh-release@v3
       with:
         name: Release ${{ env.BUILD_DATE }}
         tag_name: v${{ env.BUILD_DATE }}
-        draft: true
+        draft: false
         files: ./release/**/*.zip

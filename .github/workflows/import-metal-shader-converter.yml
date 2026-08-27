@@ -1,0 +1,304 @@
+name: Import Metal Shader Converter
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Metal Shader Converter version used in package names (for example: 4.0 beta 2)'
+        required: true
+        type: string
+      macos_asset:
+        description: 'Exact macOS Apple package filename uploaded to the source release'
+        required: false
+        type: string
+      windows_asset:
+        description: 'Exact Windows Apple package filename uploaded to the source release'
+        required: false
+        type: string
+      target_release:
+        description: 'Release tag that receives the normalized packages; empty uses the latest published release'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.prepare.outputs.ready }}
+      target_release: ${{ steps.prepare.outputs.target_release }}
+      version_tag: ${{ steps.prepare.outputs.version_tag }}
+    steps:
+    - name: Prepare Import
+      id: prepare
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE_TAG: metal-shader-converter-source
+        VERSION: ${{ inputs.version }}
+        MACOS_ASSET: ${{ inputs.macos_asset }}
+        WINDOWS_ASSET: ${{ inputs.windows_asset }}
+        REQUESTED_TARGET_RELEASE: ${{ inputs.target_release }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        VERSION_TAG="$(printf '%s' "$VERSION" | sed -E 's/[^A-Za-z0-9]+/_/g; s/^_+//; s/_+$//')"
+        echo "version_tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
+
+        TARGET_RELEASE="$REQUESTED_TARGET_RELEASE"
+        if [[ -z "$TARGET_RELEASE" ]]; then
+          TARGET_RELEASE="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq '.tag_name')"
+        fi
+        echo "target_release=$TARGET_RELEASE" >> "$GITHUB_OUTPUT"
+
+        if ! gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          gh release create "$SOURCE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target main \
+            --title 'Metal Shader Converter source inbox' \
+            --notes 'Temporary private workflow inbox for Apple Metal Shader Converter installers. Upload the macOS and Windows downloads here, then rerun the Import Metal Shader Converter workflow.' \
+            --draft
+
+          echo "ready=false" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Metal Shader Converter inbox created::Open the draft release '$SOURCE_TAG', upload the Apple macOS and Windows packages, then rerun this workflow with their exact filenames."
+          exit 0
+        fi
+
+        if [[ -z "$MACOS_ASSET" || -z "$WINDOWS_ASSET" ]]; then
+          echo "::error::The source inbox already exists. Provide macos_asset and windows_asset with the exact filenames uploaded to the draft release '$SOURCE_TAG'."
+          echo "Available assets:"
+          gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' || true
+          exit 1
+        fi
+
+        ASSETS="$(gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+
+        if ! grep -Fxq "$MACOS_ASSET" <<< "$ASSETS"; then
+          echo "::error::macOS source asset '$MACOS_ASSET' was not found in '$SOURCE_TAG'."
+          exit 1
+        fi
+
+        if ! grep -Fxq "$WINDOWS_ASSET" <<< "$ASSETS"; then
+          echo "::error::Windows source asset '$WINDOWS_ASSET' was not found in '$SOURCE_TAG'."
+          exit 1
+        fi
+
+        echo "ready=true" >> "$GITHUB_OUTPUT"
+
+  package-macos:
+    needs: prepare
+    if: needs.prepare.outputs.ready == 'true'
+    runs-on: macos-latest
+    steps:
+    - name: Download Apple Package
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE_TAG: metal-shader-converter-source
+        SOURCE_ASSET: ${{ inputs.macos_asset }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p source
+        gh release download "$SOURCE_TAG" \
+          --repo "$GITHUB_REPOSITORY" \
+          --pattern "$SOURCE_ASSET" \
+          --dir source
+
+    - name: Extract Apple Package
+      env:
+        SOURCE_ASSET: ${{ inputs.macos_asset }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        SOURCE_FILE="$PWD/source/$SOURCE_ASSET"
+        mkdir -p work/raw work/expanded
+
+        case "$SOURCE_FILE" in
+          *.zip|*.ZIP)
+            ditto -x -k "$SOURCE_FILE" work/raw
+            ;;
+          *.pkg|*.PKG)
+            pkgutil --expand-full "$SOURCE_FILE" work/expanded/source-package
+            ;;
+          *.dmg|*.DMG)
+            mkdir -p work/mount
+            hdiutil attach "$SOURCE_FILE" -readonly -nobrowse -mountpoint "$PWD/work/mount"
+            cp -R work/mount/. work/raw/
+            hdiutil detach "$PWD/work/mount"
+            ;;
+          *)
+            cp "$SOURCE_FILE" work/raw/
+            ;;
+        esac
+
+        index=0
+        while IFS= read -r -d '' package; do
+          index=$((index + 1))
+          pkgutil --expand-full "$package" "work/expanded/package-$index"
+        done < <(find work/raw -type f \( -name '*.pkg' -o -name '*.PKG' \) -print0)
+
+    - name: Normalize macOS Package
+      env:
+        VERSION_TAG: ${{ needs.prepare.outputs.version_tag }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        LIBRARY="$(find work -type f -name 'libmetalirconverter.dylib' -print -quit)"
+        HEADER="$(find work -type f -path '*/metal_irconverter/metal_irconverter.h' -print -quit)"
+
+        if [[ -z "$LIBRARY" || -z "$HEADER" ]]; then
+          echo "Metal Shader Converter library/header not found after extracting the Apple package."
+          echo "Files containing metalirconverter:"
+          find work -type f | grep -i 'metal.*irconverter' || true
+          exit 1
+        fi
+
+        mkdir -p publish/include publish/lib
+        cp "$LIBRARY" publish/lib/
+
+        INCLUDE_ROOT="${HEADER%/metal_irconverter/metal_irconverter.h}"
+        while IFS= read -r -d '' include_dir; do
+          cp -R "$include_dir" publish/include/
+        done < <(find "$INCLUDE_ROOT" -maxdepth 1 -type d -name 'metal_irconverter*' -print0)
+
+        lipo -archs publish/lib/libmetalirconverter.dylib | tr ' ' '\n' | grep -Fxq arm64
+
+        PACKAGE="macos_MetalShaderConverter_${VERSION_TAG}_arm64.zip"
+        (cd publish && zip -r "../$PACKAGE" include lib)
+        echo "PACKAGE=$PACKAGE" >> "$GITHUB_ENV"
+
+    - name: Upload macOS Package
+      uses: actions/upload-artifact@v7
+      with:
+        name: metal-shader-converter-macos
+        path: ${{ env.PACKAGE }}
+        compression-level: 0
+
+  package-windows:
+    needs: prepare
+    if: needs.prepare.outputs.ready == 'true'
+    runs-on: windows-latest
+    steps:
+    - name: Download Apple Package
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE_TAG: metal-shader-converter-source
+        SOURCE_ASSET: ${{ inputs.windows_asset }}
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force source | Out-Null
+        gh release download $env:SOURCE_TAG `
+          --repo $env:GITHUB_REPOSITORY `
+          --pattern $env:SOURCE_ASSET `
+          --dir source
+
+    - name: Extract Apple Package
+      env:
+        SOURCE_ASSET: ${{ inputs.windows_asset }}
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+
+        $sourceFile = Join-Path $PWD "source/$env:SOURCE_ASSET"
+        $raw = Join-Path $PWD 'work/raw'
+        New-Item -ItemType Directory -Force $raw | Out-Null
+
+        $extension = [System.IO.Path]::GetExtension($sourceFile).ToLowerInvariant()
+
+        if ($extension -eq '.zip') {
+          Expand-Archive -Path $sourceFile -DestinationPath $raw -Force
+        }
+        elseif ($extension -eq '.msi') {
+          $process = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @('/a', "`"$sourceFile`"", '/qn', "TARGETDIR=`"$raw`"")
+          if ($process.ExitCode -ne 0) { throw "msiexec extraction failed with exit code $($process.ExitCode)" }
+        }
+        else {
+          & 7z x $sourceFile "-o$raw" -y
+          if ($LASTEXITCODE -ne 0) {
+            throw '7-Zip could not extract the Apple Windows package. Re-upload it as a ZIP containing the installer contents and rerun the workflow.'
+          }
+        }
+
+        $nestedMsi = Get-ChildItem $raw -Recurse -File -Filter '*.msi'
+        $index = 0
+        foreach ($msi in $nestedMsi) {
+          $index++
+          $destination = Join-Path $PWD "work/msi-$index"
+          New-Item -ItemType Directory -Force $destination | Out-Null
+          $process = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @('/a', "`"$($msi.FullName)`"", '/qn', "TARGETDIR=`"$destination`"")
+          if ($process.ExitCode -ne 0) { throw "Nested MSI extraction failed with exit code $($process.ExitCode)" }
+        }
+
+    - name: Normalize Windows Package
+      env:
+        VERSION_TAG: ${{ needs.prepare.outputs.version_tag }}
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+
+        $library = Get-ChildItem work -Recurse -File -Filter 'metalirconverter.lib' | Select-Object -First 1
+        $dll = Get-ChildItem work -Recurse -File -Filter 'metalirconverter.dll' | Select-Object -First 1
+        $header = Get-ChildItem work -Recurse -File -Filter 'metal_irconverter.h' | Where-Object { $_.Directory.Name -eq 'metal_irconverter' } | Select-Object -First 1
+
+        if (-not $library -or -not $dll -or -not $header) {
+          Write-Host 'Metal Shader Converter library/header not found after extracting the Apple package.'
+          Get-ChildItem work -Recurse -File | Where-Object { $_.Name -match 'metal.*irconverter' } | Select-Object -ExpandProperty FullName
+          throw 'Unable to normalize Metal Shader Converter for Windows.'
+        }
+
+        New-Item -ItemType Directory -Force publish/include, publish/lib | Out-Null
+        Copy-Item $library.FullName publish/lib/
+        Copy-Item $dll.FullName publish/lib/
+
+        $includeRoot = Split-Path (Split-Path $header.FullName -Parent) -Parent
+        Get-ChildItem $includeRoot -Directory -Filter 'metal_irconverter*' | ForEach-Object {
+          Copy-Item $_.FullName publish/include/ -Recurse
+        }
+
+        $package = "windows_MetalShaderConverter_$env:VERSION_TAG`_x64.zip"
+        Compress-Archive -Path publish/* -DestinationPath $package -Force
+        "PACKAGE=$package" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+    - name: Upload Windows Package
+      uses: actions/upload-artifact@v7
+      with:
+        name: metal-shader-converter-windows
+        path: ${{ env.PACKAGE }}
+        compression-level: 0
+
+  publish:
+    needs: [prepare, package-macos, package-windows]
+    if: needs.prepare.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download Normalized Packages
+      uses: actions/download-artifact@v8
+      with:
+        pattern: metal-shader-converter-*
+        path: packages
+        merge-multiple: true
+
+    - name: Upload Packages to Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TARGET_RELEASE: ${{ needs.prepare.outputs.target_release }}
+        SOURCE_TAG: metal-shader-converter-source
+        MACOS_ASSET: ${{ inputs.macos_asset }}
+        WINDOWS_ASSET: ${{ inputs.windows_asset }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        ls -lh packages
+        gh release upload "$TARGET_RELEASE" packages/*.zip \
+          --repo "$GITHUB_REPOSITORY" \
+          --clobber
+
+        gh release delete-asset "$SOURCE_TAG" "$MACOS_ASSET" --repo "$GITHUB_REPOSITORY" --yes || true
+        gh release delete-asset "$SOURCE_TAG" "$WINDOWS_ASSET" --repo "$GITHUB_REPOSITORY" --yes || true
+
+        echo "Metal Shader Converter packages uploaded to $TARGET_RELEASE."
