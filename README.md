@@ -15,11 +15,11 @@ Metal Shader Converter is distributed by Apple behind the Apple Developer downlo
 1. **Check Metal Shader Converter** runs weekly and reads the current download version from Apple's public Metal Shader Converter page.
 2. If that version is not already packaged in the latest release, the workflow opens an issue and creates a temporary draft release named `metal-shader-converter-source`.
 3. Download the macOS and Windows Metal Shader Converter packages from Apple and upload both original files to that draft release.
-4. Run **Import Metal Shader Converter** with only the converter version. The workflow identifies the macOS and Windows assets automatically from their filenames/extensions.
-5. The workflow extracts the Apple installers, normalizes the `include/` and `lib/` package layout, validates the macOS arm64 library, and uploads the resulting packages to the latest published release (or a release tag supplied manually).
-6. After a successful import, the temporary draft release is deleted completely and the update issue is closed automatically.
+4. Run **Import Metal Shader Converter**. The version is optional: when omitted, it is read from the source draft title. The workflow identifies the macOS and Windows assets automatically from their filenames/extensions.
+5. The workflow extracts the Apple installers, normalizes the `include/` and `lib/` package layout, validates the macOS arm64 library, and uploads the resulting packages to the most recent published non-prerelease release (or a release tag supplied manually).
+6. The upload is verified against the target release before the temporary source draft is deleted. The matching update issue is then closed automatically.
 
-The import workflow can still be run manually before the checker notices an update. If the source inbox does not exist yet, its first run creates it; upload the two Apple packages and rerun the import with the same version.
+The import workflow can still be run manually before the checker notices an update. In that case, supply the version once to create the source inbox; after uploading the two Apple packages, the second run can leave the version empty.
 
 Published releases automatically carry the latest Metal Shader Converter packages forward, so a DXC or SPIRV-Cross update does not require another Apple download unless Metal Shader Converter itself changes.
 
