@@ -103,6 +103,24 @@ jobs:
           echo "Metal Shader Converter $VERSION is not packaged yet."
         fi
 
+    - name: Clean Stale Empty Inbox
+      if: steps.compare.outputs.update_available == 'false'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE_TAG: metal-shader-converter-source
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          ASSET_COUNT="$(gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets | length')"
+
+          if [[ "$ASSET_COUNT" == "0" ]]; then
+            gh release delete "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --yes
+            echo "Deleted stale empty Metal Shader Converter source inbox."
+          fi
+        fi
+
     - name: Prepare Update Inbox
       if: steps.compare.outputs.update_available == 'true'
       env:
