@@ -1,14 +1,14 @@
 # Shader Compilers Binaries
 
-This repository contains Releases for the latest stables binaries of different shader compilers for multiple platforms.
+This repository builds and publishes consistent shader compiler packages for the platforms used by Elemental.
 
 It currently provides:
 
-- DirectXShaderCompiler (MacOS x64, MacOS arm64)
-- SPIRV-Cross (Windows x64, Linux x64, MacOS x64, MacOS arm64)
+- DirectXShaderCompiler (Windows x64, Linux x64, macOS arm64)
+- SPIRV-Cross (Windows x64, Linux x64, macOS arm64)
+
+DirectXShaderCompiler is built from source on every platform because upstream DXC still does not publish macOS binaries. Building all platforms from the same source revision also keeps the package layout and compiler revision consistent.
 
 **Important**
 
-Those compiled binaries are not officially supported.
-
-Please note that the MacOS versions of DirectXShaderCompiler doesn't contain dxil library. It means it is not possible to compile DXIL shaders that are signed (They will not run on a prod Windows install). You can use it however to compile HLSL to SPIRV and to transcompile it to something else.
+These compiled binaries are not officially supported by Microsoft or Khronos.
