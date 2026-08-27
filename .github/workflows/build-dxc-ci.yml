@@ -1,0 +1,17 @@
+name: Build DXC CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-dxc:
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(vars.DXC_PLATFORMS) }}
+    uses: ./.github/workflows/build-dxc.yml
+    name: 'build-dxc-${{ matrix.platform }}-${{ matrix.architecture }}'
+    with:
+      platform: ${{ matrix.platform }}
+      architecture: ${{ matrix.architecture }}

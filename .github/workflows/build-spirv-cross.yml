@@ -19,7 +19,7 @@ jobs:
       }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
       with:
         submodules: recursive
         fetch-depth: 0
@@ -74,7 +74,8 @@ jobs:
       run: Compress-Archive -Path ./* -Destination ./${{ inputs.platform }}_spirv-cross_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}.zip
 
     - name: Upload Binaries
-      uses: actions/upload-artifact@master
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.platform }}_spirv-cross_${{ env.CURRENT_TAG_ARTIFACT }}_${{ inputs.architecture }}
         path: ./src/SPIRV-Cross/publish/*.zip
+        compression-level: 0
