@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Metal Shader Converter version used in package names (for example: 4.0 beta 2)'
-        required: true
+        description: 'Metal Shader Converter version; empty uses the version from the source draft inbox'
+        required: false
         type: string
       target_release:
         description: 'Release tag that receives the normalized packages; empty uses the latest published release'
@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ready: ${{ steps.prepare.outputs.ready }}
+      version: ${{ steps.prepare.outputs.version }}
       target_release: ${{ steps.prepare.outputs.target_release }}
       version_tag: ${{ steps.prepare.outputs.version_tag }}
       macos_asset: ${{ steps.prepare.outputs.macos_asset }}
@@ -31,31 +32,67 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         SOURCE_TAG: metal-shader-converter-source
-        VERSION: ${{ inputs.version }}
+        REQUESTED_VERSION: ${{ inputs.version }}
         REQUESTED_TARGET_RELEASE: ${{ inputs.target_release }}
       shell: bash
       run: |
         set -euo pipefail
 
+        VERSION="$REQUESTED_VERSION"
+        SOURCE_EXISTS=false
+
+        if gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          SOURCE_EXISTS=true
+
+          if [[ -z "$VERSION" ]]; then
+            SOURCE_NAME="$(gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --json name --jq '.name')"
+            if [[ "$SOURCE_NAME" =~ ^Metal[[:space:]]Shader[[:space:]]Converter[[:space:]](.+)[[:space:]]source[[:space:]]inbox$ ]]; then
+              VERSION="${BASH_REMATCH[1]}"
+              echo "Using Metal Shader Converter version from source inbox: $VERSION"
+            else
+              echo "::error::Version was not supplied and could not be inferred from the source draft title '$SOURCE_NAME'."
+              exit 1
+            fi
+          fi
+        fi
+
+        if [[ -z "$VERSION" ]]; then
+          echo "::error::No Metal Shader Converter source draft exists to infer a version from. Run Check Metal Shader Converter first, or supply a version once to create the inbox."
+          exit 1
+        fi
+
         VERSION_TAG="$(printf '%s' "$VERSION" | sed -E 's/[^A-Za-z0-9]+/_/g; s/^_+//; s/_+$//')"
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         echo "version_tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
 
         TARGET_RELEASE="$REQUESTED_TARGET_RELEASE"
         if [[ -z "$TARGET_RELEASE" ]]; then
-          TARGET_RELEASE="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq '.tag_name')"
+          TARGET_RELEASE="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            --jq 'map(select(.draft == false and .prerelease == false and (.tag_name | startswith("metal-shader-converter-source") | not))) | sort_by(.published_at) | last | .tag_name')"
         fi
+
+        if [[ -z "$TARGET_RELEASE" || "$TARGET_RELEASE" == "null" ]]; then
+          echo "::error::Could not determine a published target release."
+          exit 1
+        fi
+
+        if [[ "$TARGET_RELEASE" == "$SOURCE_TAG" ]]; then
+          echo "::error::Refusing to use the temporary source inbox as the target release."
+          exit 1
+        fi
+
         echo "target_release=$TARGET_RELEASE" >> "$GITHUB_OUTPUT"
 
-        if ! gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+        if [[ "$SOURCE_EXISTS" != "true" ]]; then
           gh release create "$SOURCE_TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --target main \
-            --title 'Metal Shader Converter source inbox' \
-            --notes 'Temporary workflow inbox for Apple Metal Shader Converter installers. Upload the macOS and Windows downloads here, then rerun the Import Metal Shader Converter workflow with only the version.' \
+            --title "Metal Shader Converter $VERSION source inbox" \
+            --notes "Temporary workflow inbox for Apple Metal Shader Converter $VERSION installers. Upload the macOS and Windows downloads here, then rerun Import Metal Shader Converter. The version can be left empty on the second run." \
             --draft
 
           echo "ready=false" >> "$GITHUB_OUTPUT"
-          echo "::notice title=Metal Shader Converter inbox created::Open the draft release '$SOURCE_TAG', upload the Apple macOS and Windows packages, then rerun this workflow with the version."
+          echo "::notice title=Metal Shader Converter inbox created::Open the draft release '$SOURCE_TAG', upload the Apple macOS and Windows packages, then rerun this workflow. The version can be left empty."
           exit 0
         fi
 
@@ -113,6 +150,7 @@ jobs:
         echo "windows_asset=$WINDOWS_ASSET" >> "$GITHUB_OUTPUT"
         echo "ready=true" >> "$GITHUB_OUTPUT"
 
+        echo "Metal Shader Converter version: $VERSION"
         echo "macOS package: $MACOS_ASSET"
         echo "Windows package: $WINDOWS_ASSET"
         echo "Target release: $TARGET_RELEASE"
@@ -332,15 +370,37 @@ jobs:
         GH_TOKEN: ${{ github.token }}
         TARGET_RELEASE: ${{ needs.prepare.outputs.target_release }}
         SOURCE_TAG: metal-shader-converter-source
-        VERSION: ${{ inputs.version }}
+        VERSION: ${{ needs.prepare.outputs.version }}
       shell: bash
       run: |
         set -euo pipefail
 
         ls -lh packages
-        gh release upload "$TARGET_RELEASE" packages/*.zip \
+
+        if [[ "$TARGET_RELEASE" == "$SOURCE_TAG" ]]; then
+          echo "::error::Refusing to upload normalized packages back into the temporary source inbox."
+          exit 1
+        fi
+
+        mapfile -t PACKAGE_FILES < <(find packages -maxdepth 1 -type f -name '*.zip' -print)
+        if (( ${#PACKAGE_FILES[@]} != 2 )); then
+          echo "::error::Expected exactly two normalized Metal Shader Converter packages."
+          printf '  %s\n' "${PACKAGE_FILES[@]:-<none>}"
+          exit 1
+        fi
+
+        gh release upload "$TARGET_RELEASE" "${PACKAGE_FILES[@]}" \
           --repo "$GITHUB_REPOSITORY" \
           --clobber
+
+        RELEASE_ASSETS="$(gh release view "$TARGET_RELEASE" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+        for package in "${PACKAGE_FILES[@]}"; do
+          PACKAGE_NAME="$(basename "$package")"
+          if ! grep -Fxq "$PACKAGE_NAME" <<< "$RELEASE_ASSETS"; then
+            echo "::error::Package '$PACKAGE_NAME' is missing from target release '$TARGET_RELEASE' after upload. Source inbox will be preserved."
+            exit 1
+          fi
+        done
 
         gh release delete "$SOURCE_TAG" \
           --repo "$GITHUB_REPOSITORY" \
@@ -357,4 +417,4 @@ jobs:
           gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --comment "Metal Shader Converter $VERSION was packaged successfully in $TARGET_RELEASE."
         fi
 
-        echo "Metal Shader Converter packages uploaded to $TARGET_RELEASE and source inbox deleted."
+        echo "Metal Shader Converter packages uploaded and verified in $TARGET_RELEASE; source inbox deleted."
