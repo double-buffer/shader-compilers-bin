@@ -9,6 +9,10 @@ on:
       architecture:
         required: true
         type: string
+      ref:
+        required: false
+        type: string
+        default: ''
 
 jobs:
   build:
@@ -21,6 +25,7 @@ jobs:
     steps:
     - uses: actions/checkout@v7
       with:
+        ref: ${{ inputs.ref || github.sha }}
         submodules: recursive
         fetch-depth: 0
 
@@ -85,6 +90,40 @@ jobs:
       shell: bash
       working-directory: ./src/DirectXShaderCompiler
       run: cmake --build build --config Release --parallel
+
+    - name: Smoke test DXC
+      shell: bash
+      working-directory: ./src/DirectXShaderCompiler
+      run: |
+        if [[ "${{ inputs.platform }}" == "windows" ]]; then
+          DXC=./build/bin/dxc.exe
+        else
+          DXC=./build/bin/dxc
+        fi
+
+        if [[ "${{ inputs.platform }}" == "linux" ]]; then
+          export LD_LIBRARY_PATH="$PWD/build/lib:${LD_LIBRARY_PATH:-}"
+        elif [[ "${{ inputs.platform }}" == "macos" ]]; then
+          export DYLD_LIBRARY_PATH="$PWD/build/lib:${DYLD_LIBRARY_PATH:-}"
+        fi
+
+        "$DXC" --version
+
+        cat > ./build/smoke.hlsl <<'EOF'
+        RWByteAddressBuffer Output : register(u0);
+
+        [numthreads(1, 1, 1)]
+        void main()
+        {
+            Output.Store(0, 42);
+        }
+        EOF
+
+        "$DXC" -T cs_6_9 -E main ./build/smoke.hlsl -Fo ./build/smoke.dxil
+        "$DXC" -spirv -T cs_6_9 -E main ./build/smoke.hlsl -Fo ./build/smoke.spv
+
+        test -s ./build/smoke.dxil
+        test -s ./build/smoke.spv
 
     - name: Prepare package
       shell: bash
