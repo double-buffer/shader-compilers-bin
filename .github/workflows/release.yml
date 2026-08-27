@@ -45,5 +45,5 @@ jobs:
       with:
         name: Release ${{ env.BUILD_DATE }}
         tag_name: v${{ env.BUILD_DATE }}
-        draft: true
+        draft: false
         files: ./release/**/*.zip
