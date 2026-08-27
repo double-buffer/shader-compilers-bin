@@ -1,0 +1,132 @@
+name: Update DXC
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-dxc
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      update_required: ${{ steps.check.outputs.update_required }}
+      current_version: ${{ steps.check.outputs.current_version }}
+      latest_tag: ${{ steps.check.outputs.latest_tag }}
+      branch: ${{ steps.check.outputs.branch }}
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: Check latest retail DXC release
+      id: check
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+
+        latest_tag="$(gh api repos/microsoft/DirectXShaderCompiler/releases/latest --jq .tag_name)"
+        current_version="$(git -C src/DirectXShaderCompiler describe --tags --always)"
+        current_sha="$(git -C src/DirectXShaderCompiler rev-parse HEAD)"
+        branch="automation/dxc-${latest_tag#v}"
+
+        git -C src/DirectXShaderCompiler fetch origin "refs/tags/$latest_tag:refs/tags/$latest_tag" --force
+        latest_sha="$(git -C src/DirectXShaderCompiler rev-list -n 1 "$latest_tag")"
+
+        echo "current_version=$current_version" >> "$GITHUB_OUTPUT"
+        echo "latest_tag=$latest_tag" >> "$GITHUB_OUTPUT"
+        echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+        if [[ "$current_sha" == "$latest_sha" ]]; then
+          echo "DXC is already at $latest_tag."
+          echo "update_required=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        existing_pr_count="$(gh pr list --head "$branch" --state open --json number --jq 'length')"
+        if [[ "$existing_pr_count" != "0" ]]; then
+          echo "An update PR for $latest_tag is already open."
+          echo "update_required=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        echo "New DXC retail release: $current_version -> $latest_tag"
+        echo "update_required=true" >> "$GITHUB_OUTPUT"
+
+    - name: Create update branch
+      if: steps.check.outputs.update_required == 'true'
+      shell: bash
+      env:
+        BRANCH: ${{ steps.check.outputs.branch }}
+        LATEST_TAG: ${{ steps.check.outputs.latest_tag }}
+      run: |
+        set -euo pipefail
+
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+        git switch -C "$BRANCH"
+        git -C src/DirectXShaderCompiler checkout --detach "$LATEST_TAG"
+        git add src/DirectXShaderCompiler
+        git commit -m "Upgrade DXC to $LATEST_TAG"
+        git push --force origin "$BRANCH"
+
+  build-dxc:
+    needs: prepare
+    if: needs.prepare.outputs.update_required == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(vars.DXC_PLATFORMS) }}
+    uses: ./.github/workflows/build-dxc.yml
+    name: 'build-dxc-${{ matrix.platform }}-${{ matrix.architecture }}'
+    with:
+      platform: ${{ matrix.platform }}
+      architecture: ${{ matrix.architecture }}
+      ref: ${{ needs.prepare.outputs.branch }}
+
+  create-pr:
+    needs: [prepare, build-dxc]
+    if: needs.prepare.outputs.update_required == 'true' && needs.build-dxc.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Create DXC update PR
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        BRANCH: ${{ needs.prepare.outputs.branch }}
+        CURRENT_VERSION: ${{ needs.prepare.outputs.current_version }}
+        LATEST_TAG: ${{ needs.prepare.outputs.latest_tag }}
+      run: |
+        set -euo pipefail
+
+        cat > pr-body.md <<EOF
+        Automated update to the latest retail DirectX Shader Compiler release.
+
+        Previous DXC: $CURRENT_VERSION
+        New DXC: $LATEST_TAG
+
+        The update branch was built and smoke-tested before this PR was opened on all configured DXC platforms, including Shader Model 6.9 DXIL and SPIR-V compilation.
+
+        Upstream release: https://github.com/microsoft/DirectXShaderCompiler/releases/tag/$LATEST_TAG
+        EOF
+
+        gh pr create \
+          --repo "$GITHUB_REPOSITORY" \
+          --base main \
+          --head "$BRANCH" \
+          --title "Upgrade DXC to $LATEST_TAG" \
+          --body-file pr-body.md \
+          --draft
