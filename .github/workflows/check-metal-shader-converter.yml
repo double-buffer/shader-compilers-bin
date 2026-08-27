@@ -1,0 +1,176 @@
+name: Check Metal Shader Converter
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Detect Latest Apple Version
+      id: apple
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        python3 <<'PY'
+        from html.parser import HTMLParser
+        import os
+        import re
+        import urllib.request
+
+        url = "https://developer.apple.com/metal/shader-converter/"
+        request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 shader-compilers-bin update check"})
+        with urllib.request.urlopen(request, timeout=30) as response:
+            page = response.read().decode("utf-8", errors="replace")
+
+        class LinkParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.in_link = False
+                self.text = []
+                self.links = []
+
+            def handle_starttag(self, tag, attrs):
+                if tag == "a":
+                    self.in_link = True
+                    self.text = []
+
+            def handle_data(self, data):
+                if self.in_link:
+                    self.text.append(data)
+
+            def handle_endtag(self, tag):
+                if tag == "a" and self.in_link:
+                    self.links.append(" ".join("".join(self.text).split()))
+                    self.in_link = False
+                    self.text = []
+
+        parser = LinkParser()
+        parser.feed(page)
+
+        version = None
+        for label in parser.links:
+            match = re.fullmatch(r"Metal shader converter\s+(.+)", label, flags=re.IGNORECASE)
+            if not match:
+                continue
+
+            candidate = match.group(1).strip()
+            lower = candidate.lower()
+            if "for windows" in lower or lower.endswith(".pdf"):
+                continue
+
+            version = candidate
+            break
+
+        if not version:
+            raise SystemExit("Could not determine the current Metal Shader Converter version from Apple's public page.")
+
+        version_tag = re.sub(r"[^A-Za-z0-9]+", "_", version).strip("_")
+
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+            output.write(f"version={version}\n")
+            output.write(f"version_tag={version_tag}\n")
+
+        print(f"Apple Metal Shader Converter: {version}")
+        PY
+
+    - name: Compare Published Packages
+      id: compare
+      env:
+        GH_TOKEN: ${{ github.token }}
+        VERSION: ${{ steps.apple.outputs.version }}
+        VERSION_TAG: ${{ steps.apple.outputs.version_tag }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        MACOS_PACKAGE="macos_MetalShaderConverter_${VERSION_TAG}_arm64.zip"
+        WINDOWS_PACKAGE="windows_MetalShaderConverter_${VERSION_TAG}_x64.zip"
+        ASSETS="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq '.assets[].name')"
+
+        if grep -Fxq "$MACOS_PACKAGE" <<< "$ASSETS" && grep -Fxq "$WINDOWS_PACKAGE" <<< "$ASSETS"; then
+          echo "update_available=false" >> "$GITHUB_OUTPUT"
+          echo "Metal Shader Converter $VERSION is already packaged."
+        else
+          echo "update_available=true" >> "$GITHUB_OUTPUT"
+          echo "Metal Shader Converter $VERSION is not packaged yet."
+        fi
+
+    - name: Clean Stale Empty Inbox
+      if: steps.compare.outputs.update_available == 'false'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE_TAG: metal-shader-converter-source
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          ASSET_COUNT="$(gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets | length')"
+
+          if [[ "$ASSET_COUNT" == "0" ]]; then
+            gh release delete "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --yes
+            echo "Deleted stale empty Metal Shader Converter source inbox."
+          fi
+        fi
+
+    - name: Prepare Update Inbox
+      if: steps.compare.outputs.update_available == 'true'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE_TAG: metal-shader-converter-source
+        VERSION: ${{ steps.apple.outputs.version }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if ! gh release view "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          gh release create "$SOURCE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target main \
+            --title "Metal Shader Converter $VERSION source inbox" \
+            --notes "Temporary inbox for the Apple macOS and Windows Metal Shader Converter $VERSION installers. Upload both Apple downloads here, then run the Import Metal Shader Converter workflow with version '$VERSION'." \
+            --draft
+        fi
+
+    - name: Open Update Issue
+      if: steps.compare.outputs.update_available == 'true'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        VERSION: ${{ steps.apple.outputs.version }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        TITLE="Metal Shader Converter $VERSION available"
+        ISSUE_NUMBER="$(gh issue list \
+          --repo "$GITHUB_REPOSITORY" \
+          --state open \
+          --limit 100 \
+          --json number,title | jq -r --arg title "$TITLE" '.[] | select(.title == $title) | .number' | head -n 1)"
+
+        if [[ -n "$ISSUE_NUMBER" ]]; then
+          echo "Issue #$ISSUE_NUMBER already tracks Metal Shader Converter $VERSION."
+          exit 0
+        fi
+
+        BODY="$(printf '%s\n\n%s\n\n%s\n%s\n%s\n\n%s\n\n%s' \
+          "Apple's public Metal Shader Converter page now advertises **$VERSION**, but the latest shader-compilers-bin release does not contain both normalized packages for that version." \
+          "Manual step required because Apple Developer downloads require authentication:" \
+          "1. Download the macOS and Windows Metal Shader Converter $VERSION packages from Apple." \
+          "2. Upload both original Apple packages to the draft release \`metal-shader-converter-source\`." \
+          "3. Run **Import Metal Shader Converter** with version \`$VERSION\`." \
+          "The import workflow will normalize and publish the packages, delete the temporary source draft release, and close this issue." \
+          "Apple source: https://developer.apple.com/metal/shader-converter/")"
+
+        gh issue create \
+          --repo "$GITHUB_REPOSITORY" \
+          --title "$TITLE" \
+          --body "$BODY"

@@ -10,13 +10,16 @@ It currently provides:
 
 DirectXShaderCompiler is built from source on every platform because upstream DXC still does not publish macOS binaries. Building all platforms from the same source revision also keeps the package layout and compiler revision consistent.
 
-Metal Shader Converter is distributed by Apple behind the Apple Developer downloads login, so the source installers cannot be fetched unattended by GitHub Actions. The repository keeps the remaining work automated:
+Metal Shader Converter is distributed by Apple behind the Apple Developer downloads login, so the source installers cannot be fetched unattended by GitHub Actions. Everything around that authenticated download is automated:
 
-1. Run the **Import Metal Shader Converter** workflow once. If needed, it creates a draft release named `metal-shader-converter-source` that acts as a temporary inbox.
-2. Download the macOS and Windows Metal Shader Converter packages from Apple and upload both files to that draft release.
-3. Run **Import Metal Shader Converter** again with only the converter version. The workflow identifies the macOS and Windows assets automatically from their filenames/extensions.
-4. The workflow extracts the Apple installers, normalizes the `include/` and `lib/` package layout, validates the macOS arm64 library, and uploads the resulting packages to the latest published release (or a release tag supplied manually).
-5. The temporary Apple installer assets are removed from the draft inbox after a successful import.
+1. **Check Metal Shader Converter** runs weekly and reads the current download version from Apple's public Metal Shader Converter page.
+2. If that version is not already packaged in the latest release, the workflow opens an issue and creates a temporary draft release named `metal-shader-converter-source`.
+3. Download the macOS and Windows Metal Shader Converter packages from Apple and upload both original files to that draft release.
+4. Run **Import Metal Shader Converter** with only the converter version. The workflow identifies the macOS and Windows assets automatically from their filenames/extensions.
+5. The workflow extracts the Apple installers, normalizes the `include/` and `lib/` package layout, validates the macOS arm64 library, and uploads the resulting packages to the latest published release (or a release tag supplied manually).
+6. After a successful import, the temporary draft release is deleted completely and the update issue is closed automatically.
+
+The import workflow can still be run manually before the checker notices an update. If the source inbox does not exist yet, its first run creates it; upload the two Apple packages and rerun the import with the same version.
 
 Published releases automatically carry the latest Metal Shader Converter packages forward, so a DXC or SPIRV-Cross update does not require another Apple download unless Metal Shader Converter itself changes.
 

@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   prepare:
@@ -311,13 +312,12 @@ jobs:
         path: packages
         merge-multiple: true
 
-    - name: Upload Packages to Release
+    - name: Upload Packages and Clean Up
       env:
         GH_TOKEN: ${{ github.token }}
         TARGET_RELEASE: ${{ needs.prepare.outputs.target_release }}
         SOURCE_TAG: metal-shader-converter-source
-        MACOS_ASSET: ${{ needs.prepare.outputs.macos_asset }}
-        WINDOWS_ASSET: ${{ needs.prepare.outputs.windows_asset }}
+        VERSION: ${{ inputs.version }}
       shell: bash
       run: |
         set -euo pipefail
@@ -327,7 +327,19 @@ jobs:
           --repo "$GITHUB_REPOSITORY" \
           --clobber
 
-        gh release delete-asset "$SOURCE_TAG" "$MACOS_ASSET" --repo "$GITHUB_REPOSITORY" --yes || true
-        gh release delete-asset "$SOURCE_TAG" "$WINDOWS_ASSET" --repo "$GITHUB_REPOSITORY" --yes || true
+        gh release delete "$SOURCE_TAG" \
+          --repo "$GITHUB_REPOSITORY" \
+          --yes
 
-        echo "Metal Shader Converter packages uploaded to $TARGET_RELEASE."
+        TITLE="Metal Shader Converter $VERSION available"
+        ISSUE_NUMBER="$(gh issue list \
+          --repo "$GITHUB_REPOSITORY" \
+          --state open \
+          --limit 100 \
+          --json number,title | jq -r --arg title "$TITLE" '.[] | select(.title == $title) | .number' | head -n 1)"
+
+        if [[ -n "$ISSUE_NUMBER" ]]; then
+          gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --comment "Metal Shader Converter $VERSION was packaged successfully in $TARGET_RELEASE."
+        fi
+
+        echo "Metal Shader Converter packages uploaded to $TARGET_RELEASE and source inbox deleted."
