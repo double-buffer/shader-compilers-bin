@@ -14,7 +14,7 @@ Metal Shader Converter is distributed by Apple behind the Apple Developer downlo
 
 1. Run the **Import Metal Shader Converter** workflow once. If needed, it creates a draft release named `metal-shader-converter-source` that acts as a temporary inbox.
 2. Download the macOS and Windows Metal Shader Converter packages from Apple and upload both files to that draft release.
-3. Run **Import Metal Shader Converter** again with the converter version and the exact two uploaded filenames.
+3. Run **Import Metal Shader Converter** again with only the converter version. The workflow identifies the macOS and Windows assets automatically from their filenames/extensions.
 4. The workflow extracts the Apple installers, normalizes the `include/` and `lib/` package layout, validates the macOS arm64 library, and uploads the resulting packages to the latest published release (or a release tag supplied manually).
 5. The temporary Apple installer assets are removed from the draft inbox after a successful import.
 
