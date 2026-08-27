@@ -7,6 +7,7 @@ on:
 jobs:
   build-dxc:
     strategy:
+      fail-fast: false
       matrix:
         include: ${{ fromJSON(vars.DXC_PLATFORMS) }}
     uses: ./.github/workflows/build-dxc.yml
@@ -17,6 +18,7 @@ jobs:
       
   build-spirv-cross:
     strategy:
+      fail-fast: false
       matrix:
         include: ${{ fromJSON(vars.SPIRV_CROSS_PLATFORMS) }}
     uses: ./.github/workflows/build-spirv-cross.yml
@@ -34,12 +36,12 @@ jobs:
       run: echo "BUILD_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
     - name: Download Artifacts
-      uses: actions/download-artifact@master
+      uses: actions/download-artifact@v8
       with:
         path: ./release
       
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v3
       with:
         name: Release ${{ env.BUILD_DATE }}
         tag_name: v${{ env.BUILD_DATE }}
