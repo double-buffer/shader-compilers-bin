@@ -177,15 +177,29 @@ jobs:
       run: |
         set -euo pipefail
 
-        LIBRARY="$(find work -type f -name 'libmetalirconverter.dylib' -print -quit)"
+        LIBRARY=''
+        while IFS= read -r -d '' candidate; do
+          BUILD_INFO="$(xcrun vtool -show-build "$candidate" 2>/dev/null || true)"
+          if grep -Eq 'platform[[:space:]]+(MACOS|1)([[:space:]]|$)' <<< "$BUILD_INFO"; then
+            LIBRARY="$candidate"
+            break
+          fi
+        done < <(find work -type f -name 'libmetalirconverter.dylib' -print0)
+
         HEADER="$(find work -type f -path '*/metal_irconverter/metal_irconverter.h' -print -quit)"
 
         if [[ -z "$LIBRARY" || -z "$HEADER" ]]; then
-          echo "Metal Shader Converter library/header not found after extracting the Apple package."
-          echo "Files containing metalirconverter:"
-          find work -type f | grep -i 'metal.*irconverter' || true
+          echo "macOS Metal Shader Converter library/header not found after extracting the Apple package."
+          echo "Metal Shader Converter dylib candidates:"
+          while IFS= read -r -d '' candidate; do
+            echo "--- $candidate"
+            xcrun vtool -show-build "$candidate" 2>/dev/null || true
+          done < <(find work -type f -name 'libmetalirconverter.dylib' -print0)
           exit 1
         fi
+
+        echo "Selected macOS library: $LIBRARY"
+        xcrun vtool -show-build "$LIBRARY"
 
         mkdir -p publish/include publish/lib
         cp "$LIBRARY" publish/lib/
@@ -196,6 +210,7 @@ jobs:
         done < <(find "$INCLUDE_ROOT" -maxdepth 1 -type d -name 'metal_irconverter*' -print0)
 
         lipo -archs publish/lib/libmetalirconverter.dylib | tr ' ' '\n' | grep -Fxq arm64
+        xcrun vtool -show-build publish/lib/libmetalirconverter.dylib | grep -Eq 'platform[[:space:]]+(MACOS|1)([[:space:]]|$)'
 
         PACKAGE="macos_MetalShaderConverter_${VERSION_TAG}_arm64.zip"
         (cd publish && zip -r "../$PACKAGE" include lib)
